@@ -31,9 +31,12 @@ header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-betw
 .brand h1{font-family:var(--f-display);font-weight:700;font-size:1.65rem;letter-spacing:-.01em;margin:0}
 .brand h1 span{color:var(--accent)}
 .brand p{margin:0;color:var(--muted);font-size:.86rem}
-.save{font-size:.78rem;color:var(--muted);font-family:var(--f-num)}
-nav{display:flex;gap:4px;flex-wrap:wrap;margin-block:14px 18px}
-nav button{font:inherit;font-weight:500;border:1px solid transparent;background:none;color:var(--muted);padding:7px 14px;border-radius:999px;cursor:pointer}
+.save{font-size:.78rem;color:var(--muted);display:inline-flex;align-items:center;gap:6px;background:var(--sheet);border:1px solid var(--rule);border-radius:999px;padding:4px 10px;max-width:100%}
+.save:empty{display:none}
+.save::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good);flex:none}
+nav{display:flex;gap:4px;margin-block:12px 18px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+nav::-webkit-scrollbar{display:none}
+nav button{font:inherit;font-weight:500;border:1px solid transparent;background:none;color:var(--muted);padding:7px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;flex:none}
 nav button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
 nav button:hover:not([aria-selected="true"]){border-color:var(--rule);color:var(--ink)}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -50,7 +53,7 @@ p.lead{color:var(--muted);margin:0 0 14px;max-width:68ch}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .kpi{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px}
-.kpi .v{font-family:var(--f-num);font-size:1.45rem;font-weight:500;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi .v{font-family:var(--f-display);font-size:1.5rem;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .kpi .s{font-size:.82rem;color:var(--muted)}
 .sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:16px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -116,6 +119,54 @@ legend{font-family:var(--f-display);font-weight:700;padding:0 6px;font-size:1.02
 .answer{white-space:pre-wrap;background:var(--paper);border-radius:8px;padding:12px 14px;font-size:.93rem;min-height:1em}
 .steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:.92rem}
 @media (max-width:520px){.facts{grid-template-columns:1fr 1fr}}
+.hero{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:20px 22px;display:grid;gap:14px;margin-bottom:14px}
+.hero h2{margin:0;font-size:1.55rem}
+.hero p.big{margin:0;font-size:1.06rem;max-width:70ch;line-height:1.55}
+.hero p.big b{font-family:var(--f-num);font-weight:500;white-space:nowrap}
+.mile{display:flex;flex-wrap:wrap;gap:8px}
+.mile span{background:var(--paper);border-radius:999px;padding:5px 12px;font-size:.86rem}
+.mile b{font-weight:600}
+.stack{display:flex;height:18px;border-radius:999px;overflow:hidden;background:var(--paper);gap:2px}
+.stack i{display:block;height:100%;min-width:3px}
+.legend2{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.84rem}
+.legend2 span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.legend2 i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend2 b{font-family:var(--f-num);font-weight:500}
+.todo{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;align-items:start}
+.todo>*{min-width:0}
+.tgroup{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;display:grid;gap:2px;align-content:start}
+.tgroup .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+.tgroup .hd h3{margin:0}
+.tgroup .hd span{font-family:var(--f-num);font-size:.9rem}
+.tgroup .line:first-of-type{padding-top:4px}
+.later{font-size:.84rem;color:var(--muted);padding-top:8px}
+.stepper{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.stepper button{font:inherit;font-size:.88rem;display:inline-flex;gap:8px;align-items:center;border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
+.stepper .n{width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;font-size:.75rem;font-weight:600;background:var(--paper);color:var(--muted)}
+.stepper .done .n{background:var(--good);color:var(--sheet)}
+.stepper .next{border-color:var(--accent)}
+.stepper .next .n{background:var(--accent);color:var(--sheet)}
+.ecards{display:grid;gap:12px}
+.ecard{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;display:grid;gap:12px}
+.ecard .top{display:flex;gap:10px;align-items:center}
+.ecard .top input{font-size:1.05rem;font-weight:600;border-color:transparent;background:var(--paper);padding:8px 10px}
+.ecard .top input:hover{border-color:var(--rule)}
+.ecard .sum{font-size:.86rem;color:var(--muted);margin-top:-4px}
+.ecard .sum b{color:var(--ink);font-weight:600}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px 14px}
+.fields .hint{font-size:.74rem;color:var(--muted);min-height:1em}
+.fields label{display:grid;gap:4px;font-size:.78rem;color:var(--muted);align-content:start}
+.empty{background:var(--sheet);border:1px dashed var(--rule);border-radius:var(--r);padding:22px;text-align:center;color:var(--muted)}
+.addbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.addbar select{width:auto;max-width:100%}
+@media (max-width:640px){
+  .wrap{padding-block:12px 48px}
+  .brand h1{font-size:1.4rem}
+  .hero{padding:16px}
+  .hero h2{font-size:1.3rem}
+  .kpi .v{font-size:1.25rem}
+  .kpis{grid-template-columns:1fr 1fr}
+}
 @media (prefers-reduced-motion:no-preference){.bar .t i{transition:width .35s ease}}
 @media (max-width:520px){.bar{grid-template-columns:86px 1fr 74px;font-size:.82rem}}
 </style>
@@ -538,9 +589,10 @@ function update(fn){ fn(); persist(); render(); }
 /* =================== formatting =================== */
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function money(a, c="USD"){ if (a==null || isNaN(a)) return "–";
-  if (c==="INR"){ const x=Math.abs(a); if (x>=1e7) return `₹${(a/1e7).toFixed(2)} Cr`; if (x>=1e5) return `₹${(a/1e5).toFixed(2)} L`;
-    return "₹" + Math.round(a).toLocaleString("en-IN"); }
-  return "$" + Math.round(a).toLocaleString("en-US"); }
+  const sign = a < -0.5 ? "−" : "", x = Math.abs(a);
+  if (c==="INR"){ if (x>=1e7) return `${sign}₹${(x/1e7).toFixed(2)} Cr`; if (x>=1e5) return `${sign}₹${(x/1e5).toFixed(2)} L`;
+    return sign + "₹" + Math.round(x).toLocaleString("en-IN"); }
+  return sign + "$" + Math.round(x).toLocaleString("en-US"); }
 const ccy = c => `<span class="ccy ${esc(c)}">${esc(c)}</span>`;
 function niceMonth(ym){ if (!ym) return "–"; if (ym==="clear") return "Already clear";
   const [y,m]=ym.split("-").map(Number); return new Date(y,m-1,1).toLocaleString("en-US",{month:"short", year:"numeric"}); }
@@ -555,47 +607,63 @@ function banner(){
     <div class="row"><button class="btn" data-goto="account">Sign in or create account</button></div></div>`;
   else if (S.demo) b.innerHTML = `<div class="banner"><p><b>You're looking at an example plan</b> for a fictional student, so you can see how it works. Nothing here is saved.</p>
     <div class="row"><button class="btn" data-act="start">Start my own plan</button><button class="btn ghost" data-act="copy">Start from this example</button></div></div>`;
-  else if (!S.profile.name) b.innerHTML = `<div class="banner"><p><b>Welcome.</b> Fill in Setup first, then your debts and goals. Your plan updates as you type.</p>
-    <div class="row"><button class="btn" data-goto="setup">Go to Setup</button></div></div>`;
-  else b.innerHTML = "";
+  else {
+    const st = [["setup","About you", !!S.profile.name && ((+S.profile.income_usd||0) + (+S.profile.income_inr||0) > 0)],
+                ["debts","Your debts", S.debts.length>0 || !!S.profile.no_debts], ["goals","Your goals", S.goals.length>0], ["checkin","First check-in", (S.checkins||[]).length>0]];
+    if (st.slice(0,3).every(x=>x[2])) { b.innerHTML = ""; return; }
+    const next = st.find(x=>!x[2]);
+    b.innerHTML = `<div class="banner" style="display:grid;gap:10px"><p><b>Let's set up your plan.</b> Three short steps; your plan updates as you type.</p>
+      <ol class="stepper">${st.map(([t,l,d],i)=>`<li><button data-goto="${t}" class="${d?"done":t===next[0]?"next":""}"><span class="n">${d?"✓":i+1}</span>${l}</button></li>`).join("")}</ol></div>`;
+  }
 }
 
 function homeView(P){
-  const nwUsd = (()=>{ const fx=+S.profile.fx_usd_inr; const c=(a,k)=>(+a||0)/(k==="INR"?fx:1);
-    const assets=(+S.profile.emergency_balance_usd||0)+S.goals.reduce((s,g)=>s+c(g.current_value,g.currency),0);
+  const p = S.profile, fx = +p.fx_usd_inr;
+  const nwUsd = (()=>{ const c=(a,k)=>(+a||0)/(k==="INR"?fx:1);
+    const assets=(+p.emergency_balance_usd||0)+S.goals.reduce((s,g)=>s+c(g.current_value,g.currency),0);
     const liab=S.debts.reduce((s,d)=>s+c(d.balance,d.currency),0); return {assets, liab, nw:assets-liab}; })();
   const on = P.goals.filter(g=>g.status==="On track").length;
-  const first = P.ledger[0] || {};
-  const buckets = [["Essentials",first.essentials,"var(--muted)"],["Lifestyle",first.lifestyle,"var(--accent)"],
-    ["Debt minimums",first.dmin,"var(--bad)"],["Extra debt",first.dextra,"var(--bad)"],["Emergency",first.emergency,"var(--usd)"],
-    ["Goals",first.goals,"var(--good)"],["Unallocated",first.unallocated,"var(--rule)"]].filter(b=>b[1]>0.5);
-  const max = Math.max(1, ...buckets.map(b=>b[1]));
-  const lines = P.lines.filter(l=>l.amount>0.5 || l.bucket==="Goal SIP");
-  const groups = {}; for (const l of lines) (groups[l.bucket] ||= []).push(l);
+  const f = P.ledger[0] || {};
+  const income = (+p.income_usd||0) + (+p.income_inr||0)/fx;
+  const debtTot = (f.dmin||0)+(f.dextra||0), saveTot = (f.emergency||0)+(f.goals||0);
+  const parts = [["Essentials",f.essentials,"var(--muted)"],["Guilt-free",f.lifestyle,"var(--accent)"],["Debt",debtTot,"var(--bad)"],
+    ["Emergency fund",f.emergency,"var(--usd)"],["Goals",f.goals,"var(--good)"],["Unplanned",f.unallocated,"var(--rule)"]].filter(x=>x[1]>0.5);
+  const tot = parts.reduce((s,x)=>s+x[1],0) || 1;
+  // merge lines per item so each debt / goal shows once
+  const merge = (buckets) => { const m = new Map(); for (const l of P.lines.filter(l=>buckets.includes(l.bucket))){ const k=l.item+"|"+l.currency;
+      const o = m.get(k) || {...l, amount:0, notes:[]}; o.amount += l.amount; if (l.bucket==="Extra debt payment" || l.bucket==="Goal boost") o.extra = (o.extra||0)+l.amount; if (l.need) o.need=l.need; if (l.bucket==="Debt payment"||l.bucket==="Goal SIP"||l.bucket==="Emergency fund") o.note=l.note; m.set(k,o); } return [...m.values()]; };
+  const debts = merge(["Debt payment","Extra debt payment"]).filter(l=>l.amount>0.5);
+  const goalsAll = merge(["Goal SIP","Goal boost"]), goalsNow = goalsAll.filter(l=>l.amount>0.5), goalsLater = goalsAll.filter(l=>l.amount<=0.5);
+  const ef = merge(["Emergency fund"]).filter(l=>l.amount>0.5);
+  const usd = l => l.currency==="INR" ? l.amount/fx : l.amount;
+  const group = (title, items, empty, extraHtml="") => `<section class="tgroup"><div class="hd"><h3>${title}</h3><span>${items.length?money(items.reduce((s,l)=>s+usd(l),0)):""}</span></div>
+    ${items.map(l=>`<div class="line"><span><b>${esc(l.item)}</b></span><span class="num">${money(l.amount,l.currency)}</span>
+      <small>${esc(l.note||"")}${l.extra>0.5?` · includes ${money(l.extra,l.currency)} extra`:""}</small></div>`).join("") || `<p class="small muted" style="margin:4px 0 0">${empty}</p>`}${extraHtml}</section>`;
   const last = [...(S.checkins||[])].sort((a,b)=>a.month<b.month?1:-1)[0];
   let streak=0; for (const c of [...(S.checkins||[])].sort((a,b)=>a.month<b.month?1:-1)){ if (c.score>=70) streak++; else break; }
+  const first = (p.name||"").trim().split(" ")[0];
   return `
   ${P.warnings.map(w=>`<div class="warn">${esc(w)}</div>`).join("")}
+  <section class="hero">
+    <h2>${S.demo ? "Here's how a plan looks" : first ? `Hi ${esc(first)}, here's your month` : "Your month"}</h2>
+    ${income>0 ? `<p class="big">This month, put <b>${money(debtTot)}</b> toward debt and <b>${money(saveTot)}</b> into savings and goals. After essentials, you have <b>${money(f.lifestyle||0)}</b> to spend guilt-free.</p>
+    <div class="stack" role="img" aria-label="How this month's income is split">${parts.map(([n,v,c])=>`<i style="width:${(v/tot*100).toFixed(2)}%;background:${c}" title="${n}: ${money(v)}"></i>`).join("")}</div>
+    <div class="legend2">${parts.map(([n,v,c])=>`<span><i style="background:${c}"></i>${n} <b>${money(v)}</b></span>`).join("")}</div>`
+    : `<p class="big">Add your monthly income in Setup and your plan appears here.</p><div><button class="btn" data-goto="setup">Go to Setup</button></div>`}
+    <div class="mile"><span>Debt-free <b>${niceMonth(P.debtFree)}</b></span><span>Emergency fund full <b>${niceMonth(P.efFull)}</b></span><span><b>${on} of ${P.goals.length}</b> goals on track</span></div>
+  </section>
   <div class="kpis">
-    <div class="kpi"><h3>Debt-free</h3><div class="v">${niceMonth(P.debtFree)}</div><div class="s">${money(nwUsd.liab)} owed today</div></div>
-    <div class="kpi"><h3>Emergency fund full</h3><div class="v">${niceMonth(P.efFull)}</div><div class="s">${S.profile.emergency_months} months of essentials</div></div>
-    <div class="kpi"><h3>Goals on track</h3><div class="v">${on} / ${P.goals.length}</div><div class="s">by their target dates</div></div>
+    <div class="kpi"><h3>Owed today</h3><div class="v">${money(nwUsd.liab)}</div><div class="s">all debts, in USD</div></div>
+    <div class="kpi"><h3>Saved and invested</h3><div class="v">${money(nwUsd.assets)}</div><div class="s">goals + emergency fund</div></div>
     <div class="kpi"><h3>Net worth</h3><div class="v">${money(nwUsd.nw)}</div><div class="s">US + India, in USD</div></div>
+    <div class="kpi"><h3>Monthly income</h3><div class="v">${money(income)}</div><div class="s">US + India, in USD</div></div>
   </div>
-  <h2>Where this month's money goes</h2>
-  <div class="grid2">
-    <div class="sheet">
-      <h3>Monthly waterfall, USD</h3>
-      <div class="bars">${buckets.map(([n,v,c])=>`<div class="bar"><span>${n}</span><span class="t"><i style="width:${(v/max*100).toFixed(1)}%;background:${c}"></i></span><span class="num" style="text-align:right">${money(v)}</span></div>`).join("") || `<p class="muted">Add your income in Setup to see this.</p>`}</div>
-      <p class="small muted" style="margin:12px 0 0">Money flows top to bottom. Each bucket only gets what's left after the ones above it.</p>
-    </div>
-    <div class="sheet">
-      <h3>Do this month</h3>
-      <div class="list">${Object.entries(groups).filter(([k])=>k!=="Lifestyle").map(([k,ls])=>ls.map(l=>`
-        <div class="line"><span><span class="tag">${esc(k)}</span><b>${esc(l.item)}</b></span><span class="num">${money(l.amount,l.currency)}</span>
-        <small>${esc(l.note)}${l.need && l.amount + .5 < l.need ? ` · needs ${money(l.need,l.currency)}/mo on its own; gets more once debts clear` : ""}</small></div>`).join("")).join("") || `<p class="muted">Nothing to do yet.</p>`}
-      </div>
-    </div>
+  <h2>Your to-do list this month</h2>
+  <div class="todo">
+    ${group("Pay debts", debts, "No debt payments this month.")}
+    ${group("Build your safety net", ef, (+p.emergency_balance_usd||0) > 0 ? "Your emergency fund is on target." : "Nothing this month.")}
+    ${group("Invest for goals", goalsNow, goalsAll.length ? "Goals start once high-interest debt is cleared." : "Add goals on the Goals tab.",
+      goalsLater.length ? `<p class="later">Starting later, once debts clear: ${goalsLater.map(l=>esc(l.item)).join(", ")}.</p>` : "")}
   </div>
   <h2>Goals</h2>
   <div class="sheet tbl">${goalTable(P)}</div>
@@ -830,27 +898,52 @@ QUESTION: ${question}`;
   }
 }
 
-const DEBT_COLS = [["name","Debt","text"],["lender","Lender / bank","text"],["kind","Loan type",LOAN_TYPES],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["balance","Balance left","number"],["apr","Interest %/yr","number"],["rate_type","Rate type",[["fixed","Fixed"],["floating","Floating"]]],["benchmark","Linked to (if floating)",[["","–"],...BENCHMARKS.map(b=>[b,b])]],["repay","Repayment",REPAY],["min_payment","EMI / payment per month","number"],["pay_start","Payments start","month"],["ends","Ends","month"]];
-const GOAL_COLS = [["name","Goal","text"],["type","Goal type",{groups:GOAL_GROUPS}],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["target_amount","Cost in today's money","number"],["target_date","Target date","month"],["priority","Priority (1 = top)",["1","2","3","4","5"]],["risk","Risk",RISK_OPTS],["current_value","Already saved","number"]];
-function editTable(kind, cols){
-  const rows = S[kind];
-  const opt = (o,cur) => { const [v,l] = Array.isArray(o) ? o : [o,o]; return `<option value="${esc(v)}" ${String(cur)===String(v)?"selected":""}>${esc(l)}</option>`; };
-  const cell = (r,i,[k,label,t]) => t && t.groups
-    ? `<select data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${label}">${Object.entries(t.groups).map(([g,os])=>`<optgroup label="${esc(g)}">${os.map(o=>opt(o,r[k])).join("")}</optgroup>`).join("")}</select>`
-    : Array.isArray(t)
-    ? `<select data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${label}">${t.map(o=>opt(o,r[k])).join("")}</select>`
-    : `<input data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${label}" type="${t}" value="${esc(r[k])}" ${t==="number"?'min="0" step="any"':""}>`;
-  return `<div class="tbl"><table class="edit"><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join("")}<th></th></tr></thead><tbody>
-    ${rows.map((r,i)=>`<tr>${cols.map(c=>`<td>${cell(r,i,c)}</td>`).join("")}<td><button class="btn ghost small" data-del="${kind}" data-i="${i}" aria-label="Remove row">Remove</button></td></tr>`).join("")}
-    </tbody></table></div>
-    <div class="row" style="margin-top:12px"><button class="btn small" data-add="${kind}">+ Add ${kind==="debts"?"a debt":"a blank goal"}</button>
-    ${kind==="goals" ? `<label for="goalTpl" class="small muted">or start from a goal type:</label><select id="goalTpl" style="width:auto"><option value="">Choose a goal type…</option>${Object.entries(GOAL_GROUPS).map(([g,os])=>`<optgroup label="${esc(g)}">${os.map(o=>`<option>${esc(o)}</option>`).join("")}</optgroup>`).join("")}</select>` : ""}</div>`;
+const PRIORITY_OPTS = [["1","1 · Highest"],["2","2 · High"],["3","3 · Medium"],["4","4 · Low"],["5","5 · Lowest"]];
+const DEBT_FIELDS = [
+  ["lender","Lender / bank","text"], ["kind","Loan type",LOAN_TYPES], ["country","Country",["US","India"]], ["currency","Currency",["USD","INR"]],
+  ["balance","Balance left","number"], ["apr","Interest % per year","number"], ["rate_type","Rate type",[["fixed","Fixed"],["floating","Floating"]]],
+  ["benchmark","Linked to",[["","Not sure"],...BENCHMARKS.map(b=>[b,b])], r=>r.rate_type==="floating"],
+  ["repay","Repayment",REPAY],
+  ["min_payment", r=>({emi:"EMI per month (0 = work it out)", moratorium:"EMI once payments start (0 = work it out)", minimum:"Minimum payment per month", flexible:"Monthly payment, if any"})[r.repay]||"Payment per month", "number", r=>!["interest_only","bullet"].includes(r.repay)],
+  ["pay_start","Payments start","month", r=>r.repay==="moratorium"],
+  ["ends", r=>({interest_only:"Principal due", bullet:"Lump sum due"})[r.repay]||"Loan ends", "month", r=>["emi","moratorium","interest_only","bullet"].includes(r.repay)]];
+const GOAL_FIELDS = [
+  ["type","Goal type",{groups:GOAL_GROUPS}], ["country","Country",["US","India"]], ["currency","Currency",["USD","INR"]],
+  ["target_amount","Cost in today's money","number"], ["target_date","Target date","month"], ["priority","Priority",PRIORITY_OPTS],
+  ["risk","Risk",RISK_OPTS], ["current_value","Already saved","number"]];
+function fieldHtml(kind, r, i, [k, label, t]){
+  const lab = typeof label==="function" ? label(r) : label, id = `${kind}-${i}-${k}`;
+  const opt = o => { const [v,l] = Array.isArray(o) ? o : [o,o]; return `<option value="${esc(v)}" ${String(r[k]??"")===String(v)?"selected":""}>${esc(l)}</option>`; };
+  const ctl = t && t.groups ? `<select id="${id}" data-k="${kind}" data-i="${i}" data-f="${k}">${Object.entries(t.groups).map(([g,os])=>`<optgroup label="${esc(g)}">${os.map(opt).join("")}</optgroup>`).join("")}</select>`
+    : Array.isArray(t) ? `<select id="${id}" data-k="${kind}" data-i="${i}" data-f="${k}">${t.map(opt).join("")}</select>`
+    : `<input id="${id}" data-k="${kind}" data-i="${i}" data-f="${k}" type="${t}" value="${esc(r[k]??"")}" ${t==="number"?'min="0" step="any" inputmode="decimal"':""}>`;
+  const amt = ["balance","min_payment","target_amount","current_value"].includes(k) && +r[k] >= 1000 ? `<span class="hint">${money(+r[k], r.currency)}</span>` : "";
+  return `<label for="${id}">${esc(lab)}${ctl}${amt}</label>`;
+}
+function editCards(kind, P){
+  const rows = S[kind], fields = kind==="debts" ? DEBT_FIELDS : GOAL_FIELDS;
+  const summary = (r) => {
+    if (!r.name) return "";
+    if (kind==="debts"){ const d = P.debts.find(x=>x.name===r.name); if (!d) return "";
+      return `<b>${money(d.balance,d.currency)}</b> at ${d.apr.toFixed(2)}% ${d.rate_type} · ${esc(d.note)} · due this month <b>${money(d.firstPay,d.currency)}</b> · ${d.paid ? `paid off <b>${niceMonth(d.paid)}</b>` : "not paid off within 40 years"}`; }
+    const g = P.goals.find(x=>x.name===r.name); if (!g) return "";
+    return `Costs <b>${money(g.T,g.currency)}</b> by ${niceMonth(g.date)} with inflation · needs <b>${money(g.need,g.currency)}</b>/month · ${g.status==="On track" ? `on track for <b>${niceMonth(g.done)}</b>` : esc(g.status.toLowerCase())}`; };
+  const cards = rows.map((r,i)=>`<article class="ecard">
+      <div class="top"><input id="${kind}-${i}-name" data-k="${kind}" data-i="${i}" data-f="name" value="${esc(r.name)}" placeholder="${kind==="debts"?"Name this debt, e.g. SBI education loan":"Name this goal, e.g. Land in Hyderabad"}" aria-label="Name">
+        <button class="btn ghost small" data-del="${kind}" data-i="${i}" aria-label="Remove ${esc(r.name||"this item")}">Remove</button></div>
+      ${summary(r) ? `<div class="sum">${summary(r)}</div>` : ""}
+      <div class="fields">${fields.filter(f=>!f[3] || f[3](r)).map(f=>fieldHtml(kind, r, i, f)).join("")}</div></article>`).join("");
+  const empty = kind==="debts" ? `<div class="empty"><p style="margin:0 0 6px;color:var(--ink)"><b>No debts added yet.</b></p><p style="margin:0 0 12px">Add anything you owe: credit cards, education or home loans, money from family.</p><button class="btn ghost small" data-act="nodebts">I don't have any debts</button></div>`
+    : `<div class="empty"><p style="margin:0 0 6px;color:var(--ink)"><b>No goals yet.</b></p><p style="margin:0">Pick a goal type below to start with sensible defaults.</p></div>`;
+  return `<div class="ecards">${cards || empty}</div>
+    <div class="addbar"><button class="btn small" data-add="${kind}">+ Add ${kind==="debts"?"a debt":"a blank goal"}</button>
+    ${kind==="goals" ? `<select id="goalTpl" aria-label="Add a goal from a goal type"><option value="">+ Add a goal by type…</option>${Object.entries(GOAL_GROUPS).map(([g,os])=>`<optgroup label="${esc(g)}">${os.map(o=>`<option>${esc(o)}</option>`).join("")}</optgroup>`).join("")}</select>` : ""}</div>`;
 }
 function debtsView(){
   const fx=+S.profile.fx_usd_inr, tot=S.debts.reduce((s,d)=>s+(+d.balance||0)/(d.currency==="INR"?fx:1),0);
   const hi = S.debts.filter(d=>+d.apr>=+S.profile.high_interest_apr).map(d=>d.name);
-  return `<p class="lead">Everything you owe, in the US and in India. Enter amounts in each debt's own currency. Pick the loan type for each: credit card, personal, education, home, car, gold loan, money from family, and more.</p>
-  <div class="sheet">${editTable("debts", DEBT_COLS)}</div>
+  return `<p class="lead">Everything you owe, in the US and in India. Enter amounts in each debt's own currency. The fields adjust to the repayment type you pick.</p>
+  ${editCards("debts", runPlan(S.profile, S.debts, S.goals, 0))}
   <div class="kpis" style="margin-top:12px"><div class="kpi"><h3>Total owed, in USD</h3><div class="v">${money(tot)}</div></div>
   <div class="kpi"><h3>By loan type</h3>${(()=>{ const by={}; for (const d of S.debts){ by[d.kind]=(by[d.kind]||0)+(+d.balance||0)/(d.currency==="INR"?fx:1); }
       const e=Object.entries(by).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]); return e.length ? e.map(([k,v])=>`<div class="s" style="display:flex;justify-content:space-between;gap:8px;color:var(--ink)"><span>${esc(k)}</span><span class="num">${money(v)}</span></div>`).join("") : `<div class="s">No balances yet</div>`; })()}</div>
@@ -870,8 +963,8 @@ function debtsView(){
     <p style="margin-bottom:0">For automatic US balances, connect a secure, read-only finance connector to Claude and ask Claude to update your numbers. Indian loans are usually linked through RBI's Account Aggregator system in an Indian app; then enter the balance here.</p></div>`;
 }
 function goalsView(){
-  return `<p class="lead">Any goal you have: a home, land, a wedding, starting a business, your parents, retirement, travel. Start from a goal type to get sensible defaults, then set the cost <b>in today's money</b> (inflation is added for you). Priority 1 gets funded first. Risk decides how much goes into stocks.</p>
-  <div class="sheet">${editTable("goals", GOAL_COLS)}</div>
+  return `<p class="lead">Any goal you have: a home, land, a wedding, a business, your parents, retirement, travel. Enter the cost <b>in today's money</b>; inflation is added for you. Priority 1 gets funded first, and Risk decides how much goes into stocks.</p>
+  ${editCards("goals", runPlan(S.profile, S.debts, S.goals, 0))}
   <div class="grid2" style="margin-top:12px">
     <div class="sheet"><h3>How each goal is invested</h3><table><thead><tr><th>Years to goal</th><th class="r">Equity</th><th class="r">Safer assets</th></tr></thead><tbody>
       ${GLIDE.map(([y,s])=>`<tr><td>${y===0?"Under 1":y+"+"}</td><td class="r num">${Math.round(s*100)}%</td><td class="r num">${Math.round((1-s)*100)}%</td></tr>`).join("")}</tbody></table></div>
@@ -927,6 +1020,8 @@ function setupView(){
 
 function render(){
   document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===tab)));
+  try { const sel = document.querySelector('#tabs [aria-selected="true"]'), nav = document.getElementById("tabs");
+    if (sel && nav && nav.scrollTo) nav.scrollTo({left: Math.max(0, sel.offsetLeft - 16), behavior:"smooth"}); } catch(_){}
   banner();
   const P = runPlan(S.profile, S.debts, S.goals, tab==="plan" ? whatIf : 0, tab==="plan" ? shock : 0);
   const v = $("#view");
@@ -949,6 +1044,7 @@ document.addEventListener("click", e => {
   if (act==="reset0"){ render(); return; }
   if (act==="reset2"){ S = normalize(blankState()); tab="setup"; persist(); render(); return; }
   if (act==="signout"){ SB && SB.auth.signOut(); authMsg = ""; return; }
+  if (act==="nodebts"){ update(()=>{ S.profile.no_debts = true; }); tab = "goals"; render(); return; }
   if (act==="usefx"){ update(()=>{ S.profile.fx_usd_inr = +MARKET.fx.usd_inr; }); return; }
   if (t.dataset.ask!=null){ const P = runPlan(S.profile, S.debts, S.goals, 0), g = P.goals[+t.dataset.ask];
     if (g) askAdvisor(`Explain the plan for my "${g.name}" goal: where the money should go, how it's expected to grow, and what to watch out for.`, `ans-${t.dataset.ask}`, t.dataset.ask); return; }
