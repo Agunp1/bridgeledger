@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS debts (
     name         TEXT NOT NULL,
     country      TEXT NOT NULL DEFAULT 'US',     -- US / India
     currency     TEXT NOT NULL DEFAULT 'USD',    -- USD / INR
-    kind         TEXT NOT NULL DEFAULT 'short_term', -- short_term / education / informal / other
+    kind         TEXT NOT NULL DEFAULT 'Other',    -- Credit card, Personal loan, Education loan, Home loan, ...
     balance      REAL NOT NULL DEFAULT 0,
     apr          REAL NOT NULL DEFAULT 0,        -- yearly interest %
     min_payment  REAL NOT NULL DEFAULT 0         -- in the debt's own currency

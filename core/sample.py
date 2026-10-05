@@ -39,13 +39,13 @@ DEMO_PROFILE = {
 
 def demo_debts() -> pd.DataFrame:
     return pd.DataFrame([
-        {"name": "US credit card", "country": "US", "currency": "USD", "kind": "short_term",
+        {"name": "US credit card", "country": "US", "currency": "USD", "kind": "Credit card",
          "balance": 3200, "apr": 24.9, "min_payment": 100},
-        {"name": "Personal loan (India)", "country": "India", "currency": "INR", "kind": "short_term",
+        {"name": "Personal loan (India)", "country": "India", "currency": "INR", "kind": "Personal loan",
          "balance": 250000, "apr": 14.0, "min_payment": 8000},
-        {"name": "Education loan (India)", "country": "India", "currency": "INR", "kind": "education",
+        {"name": "Education loan (India)", "country": "India", "currency": "INR", "kind": "Education loan",
          "balance": 1800000, "apr": 9.5, "min_payment": 25000},
-        {"name": "Loan from family", "country": "India", "currency": "INR", "kind": "informal",
+        {"name": "Loan from family", "country": "India", "currency": "INR", "kind": "Loan from family/friends",
          "balance": 100000, "apr": 0.0, "min_payment": 5000},
     ])
 
