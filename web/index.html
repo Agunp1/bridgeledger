@@ -1,0 +1,582 @@
+<title>BridgeLedger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a ledger book. Slim header with tabs, then one working sheet per tab; summary first, detail below. */
+:root{
+  --ink:#1c2740; --paper:#f6f7fa; --sheet:#ffffff; --rule:#dfe3ec; --muted:#5d6782;
+  --accent:#c9741f; --accent-soft:#f6e6d3; --usd:#2f5d9e; --inr:#c9741f;
+  --good:#2e7a4f; --good-soft:#e2f1e7; --warn:#a8601a; --warn-soft:#fbeedd; --bad:#b23a3a; --bad-soft:#f8e3e3;
+  --f-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ink:#e7eaf2; --paper:#11151f; --sheet:#181d2a; --rule:#2a3143; --muted:#97a0b8;
+  --accent:#e59a4c; --accent-soft:#3a2a19; --usd:#7ea6e0; --inr:#e59a4c;
+  --good:#6cc493; --good-soft:#18301f; --warn:#e3a35c; --warn-soft:#352614; --bad:#ec7c7c; --bad-soft:#3a1c1c;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ink:#e7eaf2; --paper:#11151f; --sheet:#181d2a; --rule:#2a3143; --muted:#97a0b8;
+  --accent:#e59a4c; --accent-soft:#3a2a19; --usd:#7ea6e0; --inr:#e59a4c;
+  --good:#6cc493; --good-soft:#18301f; --warn:#e3a35c; --warn-soft:#352614; --bad:#ec7c7c; --bad-soft:#3a1c1c;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding:0 16px}
+.wrap{max-width:1080px;margin:0 auto;padding-block:20px 60px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-block:6px 14px;border-bottom:1px solid var(--rule)}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:1.65rem;letter-spacing:-.01em;margin:0}
+.brand h1 span{color:var(--accent)}
+.brand p{margin:0;color:var(--muted);font-size:.86rem}
+.save{font-size:.78rem;color:var(--muted);font-family:var(--f-num)}
+nav{display:flex;gap:4px;flex-wrap:wrap;margin-block:14px 18px}
+nav button{font:inherit;font-weight:500;border:1px solid transparent;background:none;color:var(--muted);padding:7px 14px;border-radius:999px;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+nav button:hover:not([aria-selected="true"]){border-color:var(--rule);color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h2{font-family:var(--f-display);font-weight:700;font-size:1.3rem;margin:28px 0 10px;text-wrap:balance}
+h2:first-child{margin-top:4px}
+h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 8px;font-weight:600}
+p.lead{color:var(--muted);margin:0 0 14px;max-width:68ch}
+.banner{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);padding:12px 16px;margin-bottom:18px}
+.banner p{margin:0;max-width:62ch}
+.btn{font:inherit;font-weight:600;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.small{padding:4px 10px;font-size:.85rem;font-weight:500}
+.btn.danger{background:transparent;color:var(--bad);border-color:var(--bad)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px}
+.kpi .v{font-family:var(--f-num);font-size:1.45rem;font-weight:500;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:.82rem;color:var(--muted)}
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid2>*{min-width:0}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.warn{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:.92rem}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th{text-align:left;font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:8px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--rule);vertical-align:middle}
+td.r,th.r{text-align:right}
+tr:last-child td{border-bottom:none}
+.pill{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.ccy{font-family:var(--f-num);font-size:.72rem;font-weight:500;padding:1px 6px;border-radius:4px;border:1px solid currentColor}
+.ccy.USD{color:var(--usd)} .ccy.INR{color:var(--inr)}
+.bars{display:grid;gap:7px}
+.bar{display:grid;grid-template-columns:110px 1fr 90px;gap:10px;align-items:center;font-size:.9rem}
+.bar .t{height:14px;background:var(--paper);border-radius:3px;overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:3px}
+.list{display:grid;gap:0}
+.line{display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:9px 0;border-bottom:1px solid var(--rule)}
+.line:last-child{border-bottom:none}
+.line b{font-weight:600}
+.line small{grid-column:1/-1;color:var(--muted);font-size:.82rem}
+.tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-right:6px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:6px 8px;width:100%;min-width:0}
+input[type=number]{font-family:var(--f-num);text-align:right}
+.edit td{padding:5px 4px}
+.edit input,.edit select{min-width:84px}
+.edit td:first-child input{min-width:150px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 16px}
+.form label{display:grid;gap:4px;font-size:.86rem;color:var(--muted)}
+.form label span{color:var(--ink);font-weight:500}
+fieldset{border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px 16px;margin:0 0 14px;background:var(--sheet)}
+legend{font-family:var(--f-display);font-weight:700;padding:0 6px;font-size:1.02rem}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--f-num);font-size:11px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.slider{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;max-width:560px}
+.slider input{padding:0}
+.rules ol{margin:0;padding-left:20px;max-width:70ch} .rules li{margin-bottom:5px}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+.score{font-family:var(--f-display);font-size:2.4rem;font-weight:700;line-height:1}
+@media (prefers-reduced-motion:no-preference){.bar .t i{transition:width .35s ease}}
+@media (max-width:520px){.bar{grid-template-columns:86px 1fr 74px;font-size:.82rem}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Bridge<span>Ledger</span></h1>
+      <p>One plan for your US and India money</p>
+    </div>
+    <div class="save" id="saveState" aria-live="polite"></div>
+  </header>
+  <nav role="tablist" id="tabs">
+    <button role="tab" data-tab="home">This month</button>
+    <button role="tab" data-tab="plan">Plan</button>
+    <button role="tab" data-tab="debts">Debts</button>
+    <button role="tab" data-tab="goals">Goals</button>
+    <button role="tab" data-tab="checkin">Check-in</button>
+    <button role="tab" data-tab="setup">Setup</button>
+  </nav>
+  <div id="banner"></div>
+  <main id="view"></main>
+</div>
+
+<script>
+/* =================== planning engine (port of core/planner.py) =================== */
+const RET = { USD:{equity:8, safe:4}, INR:{equity:11, safe:6.5} };
+const GLIDE = [[7,.80],[5,.70],[3,.50],[2,.30],[1,.15],[0,0]];
+const VEH = { USD:{equity:"index fund / ETF", safe:"HYSA, T-bills"}, INR:{equity:"equity index fund", safe:"liquid fund, FD"} };
+const STARTER_CAP = .5, FULL_CAP = .3, MAX_MONTHS = 480;
+
+const eqShare = m => { const y = Math.max(m,0)/12; for (const [my,s] of GLIDE) if (y >= my) return s; return 0; };
+const mret = (c,m) => { const r = RET[c]||RET.USD, e = eqShare(m); return Math.pow(1+(e*r.equity+(1-e)*r.safe)/100, 1/12)-1; };
+const horizonLabel = m => m/12 < 2 ? "Short term" : m/12 < 5 ? "Medium term" : "Long term";
+function reqMonthly(v, T, n, c){
+  if (v >= T) return 0; if (n <= 0) return T - v;
+  const fv = p => { let x = v; for (let k=0;k<n;k++) x = x*(1+mret(c,n-k)) + p; return x; };
+  const b = fv(0), s = fv(1) - b; return Math.max(0, (T-b)/s);
+}
+function monthLabel(start, off){ const t = start.getFullYear()*12 + start.getMonth() + off; return `${Math.floor(t/12)}-${String(t%12+1).padStart(2,"0")}`; }
+function monthsBetween(start, ym){ const [y,m] = String(ym).slice(0,7).split("-").map(Number); return (y-start.getFullYear())*12 + (m-1-start.getMonth()); }
+
+class Wallet {
+  constructor(usd, inr, fx, fee){ this.usd=usd; this.inr=inr; this.fx=fx; this.fee=fee/100; }
+  total(){ return this.usd + this.inr/this.fx; }
+  cost(a,c){ if (c==="INR"){ const p=Math.min(a,this.inr); return p/this.fx + (a-p)/this.fx*(1+this.fee);} return a; }
+  maxPay(b,c){ b = Math.min(b, this.total()); if (b<=0) return 0;
+    if (c==="INR"){ const p=Math.min(this.inr, b*this.fx); return p + Math.max(b - p/this.fx,0)*this.fx/(1+this.fee); } return b; }
+  pay(a,c){ if (a<=0) return 0; a = Math.min(a, this.maxPay(this.total(), c)); let spent;
+    if (c==="INR"){ const p=Math.min(a,this.inr); this.inr-=p; const u=(a-p)/this.fx*(1+this.fee); this.usd-=u; spent=p/this.fx+u; }
+    else { const u=Math.min(a,this.usd); this.usd-=u; this.inr-=(a-u)*this.fx; spent=a; }
+    if (this.usd<0 && this.usd>-1e-6) this.usd=0; if (this.inr<0 && this.inr>-1e-4) this.inr=0; return spent; }
+}
+
+function runPlan(p, debtsIn, goalsIn, extra=0){
+  const now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const fx0 = +p.fx_usd_inr, drift = +p.fx_drift_pct/100, strategy = p.debt_strategy;
+  const hi = +p.high_interest_apr, lo = +p.low_interest_apr, gshare = +p.min_goal_share_pct/100;
+  const warnings = [];
+  const D = debtsIn.filter(d=>d.name).map(d=>({...d, bal:+d.balance||0, interest:0, paid:(+d.balance||0)>0.005?null:"clear"}));
+  const G = goalsIn.filter(g=>g.name && /^\d{4}-\d{2}$/.test(g.target_date)).map(g=>{
+    const infl = g.currency==="INR" ? +p.inflation_inr_pct : +p.inflation_usd_pct, dl = monthsBetween(start, g.target_date);
+    const T = (+g.target_amount||0) * Math.pow(1+infl/100, Math.max(dl,0)/12), v = +g.current_value||0;
+    if (dl < 0) warnings.push(`"${g.name}" has a target date in the past. Update it on the Goals tab.`);
+    return {...g, deadline:dl, T, value:v, done: v>=T ? monthLabel(start,0) : null, need:reqMonthly(v,T,dl,g.currency), planned:0};
+  }).sort((a,b)=>(+a.priority)-(+b.priority) || a.deadline-b.deadline);
+  let ef = +p.emergency_balance_usd||0; const efRate = Math.pow(1+RET.USD.safe/100,1/12)-1;
+  const lastGoal = Math.max(0, ...G.map(g=>g.deadline));
+  const horizon = Math.min(MAX_MONTHS, Math.max(lastGoal+120, 60));
+  const ledger=[], debtSeries=[], lines=[];
+  let debtFree = D.some(d=>d.bal>0.005) ? null : monthLabel(start,0), efFull = null;
+  const order = (ds,fx) => strategy==="snowball" ? [...ds].sort((a,b)=>a.bal/(a.currency==="INR"?fx:1) - b.bal/(b.currency==="INR"?fx:1)) : [...ds].sort((a,b)=>b.apr-a.apr);
+
+  for (let t=0; t<horizon; t++){
+    const label = monthLabel(start,t), fx = fx0*Math.pow(1+drift, t/12);
+    const incUsd = (+p.income_usd||0) + extra, incInr = +p.income_inr||0;
+    const w = new Wallet(incUsd, incInr, fx, +p.remit_fee_pct);
+    const row = {month:label, essentials:0, lifestyle:0, dmin:0, dextra:0, emergency:0, goals:0, unallocated:0};
+    const L = t===0 ? (x)=>lines.push(x) : ()=>{};
+    for (const d of D) if (d.bal>0.005){ const i=d.bal*(+d.apr)/1200; d.bal+=i; d.interest+=i; }
+    for (const g of G) if (!g.done) g.value *= 1+mret(g.currency, g.deadline-t);
+    ef *= 1+efRate;
+    const ess = (+p.essentials_usd||0) + (+p.essentials_inr||0)/fx;
+    row.essentials += w.pay(+p.essentials_usd||0,"USD") + w.pay(+p.essentials_inr||0,"INR");
+    let life = Math.min((+p.lifestyle_pct||0)/100*(incUsd+incInr/fx), w.total());
+    row.lifestyle = w.pay(life,"USD");
+    L({bucket:"Lifestyle", item:"Guilt-free spending", amount:life, currency:"USD", note:"Planned, so spend it without guilt"});
+    for (const d of D.filter(d=>d.bal>0.005)){
+      let a = Math.min(+d.min_payment||0, d.bal);
+      if (w.cost(a,d.currency) > w.total()+1e-9){ a = w.maxPay(w.total(), d.currency); if (t===0) warnings.push(`Not enough money for the minimum payment on "${d.name}".`); }
+      row.dmin += w.pay(a,d.currency); d.bal -= a;
+      L({bucket:"Debt minimum", item:d.name, amount:a, currency:d.currency, note:`${(+d.apr).toFixed(1)}% interest`});
+    }
+    const payExtra = (cands, budget) => { let s=0;
+      for (const d of order(cands.filter(d=>d.bal>0.005), fx)){ if (budget-s<=0.005) break;
+        const a = Math.min(d.bal, w.maxPay(budget-s, d.currency)); s += w.pay(a,d.currency); d.bal -= a;
+        if (a>0.005) L({bucket:"Extra debt payment", item:d.name, amount:a, currency:d.currency, note:strategy==="snowball"?"Smallest balance first":"Highest interest first"}); }
+      return s; };
+    const fundEf = b => { const s = w.pay(Math.max(0,Math.min(b,w.total())),"USD"); ef += s;
+      if (s>0.005) L({bucket:"Emergency fund", item:"Emergency fund", amount:s, currency:"USD", note:"Keep in high-yield savings"}); return s; };
+    let R = w.total(); const sgap = (+p.starter_emergency_months)*ess - ef;
+    if (sgap>0 && R>0) row.emergency += fundEf(Math.min(sgap, STARTER_CAP*R));
+    R = w.total(); const high = D.filter(d=>d.bal>0.005 && +d.apr>=hi);
+    if (high.length && R>0) row.dextra += payExtra(high, R*(1-gshare));
+    else { const fgap = (+p.emergency_months)*ess - ef; if (fgap>0 && R>0) row.emergency += fundEf(Math.min(fgap, FULL_CAP*R)); }
+    for (const g of G){ if (g.done) continue; const ml = g.deadline - t, req = reqMonthly(g.value, g.T, ml, g.currency);
+      if (req<=0) continue; const a = Math.min(req, w.maxPay(w.total(), g.currency));
+      row.goals += w.pay(a,g.currency); g.value += a;
+      if (t===0){ g.planned = a; const e = eqShare(ml), v = VEH[g.currency]||VEH.USD;
+        L({bucket:"Goal SIP", item:g.name, amount:a, currency:g.currency, need:req,
+           note:`${Math.round(e*100)}% ${v.equity} · ${Math.round((1-e)*100)}% ${v.safe}`}); } }
+    R = w.total(); const mod = D.filter(d=>d.bal>0.005 && +d.apr>=lo);
+    if (mod.length && R>0.005) row.dextra += payExtra(mod, R);
+    R = w.total(); const open = G.filter(g=>!g.done);
+    if (open.length && R>0.005){ const g=open[0], a=Math.min(Math.max(0,g.T-g.value), w.maxPay(R,g.currency));
+      row.goals += w.pay(a,g.currency); g.value += a;
+      if (t===0 && a>0.005){ g.planned += a; L({bucket:"Goal boost", item:g.name, amount:a, currency:g.currency, note:"Surplus sent to your top goal"}); } }
+    row.unallocated = Math.max(0, w.total());
+    if (t===0 && row.unallocated>0.5) L({bucket:"Unallocated", item:"Surplus", amount:row.unallocated, currency:"USD", note:"Add a goal or raise a target to use this"});
+    for (const d of D) if (d.bal<=0.005 && !d.paid){ d.bal=0; d.paid=label; }
+    for (const g of G) if (!g.done && g.value >= g.T-0.5) g.done = label;
+    if (!debtFree && D.every(d=>d.bal<=0.005)) debtFree = label;
+    if (!efFull && ef >= (+p.emergency_months)*ess - 0.5) efFull = label;
+    row.debtUsd = D.reduce((s,d)=>s + d.bal/(d.currency==="INR"?fx:1), 0);
+    ledger.push(row);
+    if (debtFree && efFull && G.every(g=>g.done) && t>=lastGoal) break;
+  }
+  if (ledger.length && ledger[0].essentials + .5 < (+p.essentials_usd||0) + (+p.essentials_inr||0)/fx0)
+    warnings.unshift("Your income doesn't cover your essentials. Lower fixed costs before anything else.");
+  const goals = G.map(g=>{ let status, late=0;
+    if (g.done){ late = monthsBetween(start, g.done) - g.deadline; status = late<=0 ? "On track" : `Late by ${late} mo`; }
+    else status = "Not reached";
+    return {name:g.name, currency:g.currency, priority:+g.priority, date:g.target_date, today:+g.target_amount, T:g.T,
+            saved:+g.current_value||0, need:g.need, planned:g.planned, done:g.done, status, late, deadline:g.deadline,
+            mix:Math.round(eqShare(g.deadline)*100), horizon:horizonLabel(g.deadline)}; });
+  const debts = D.map(d=>({name:d.name, currency:d.currency, apr:+d.apr, balance:+d.balance||0, paid:d.paid, interest:d.interest}));
+  return {ledger, lines, warnings, goals, debts, debtFree, efFull, start};
+}
+function disciplineScore(pl, ac){
+  const r = (a,b) => b<=0 ? 1 : Math.max(0, Math.min(a/b,1));
+  const over = Math.max(0, ac.lifestyle - pl.lifestyle), life = pl.lifestyle<=0 ? 1 : Math.max(0, 1-over/pl.lifestyle);
+  return Math.round(100*(.4*r(ac.debt,pl.debt) + .4*r(ac.invest,pl.invest) + .2*life));
+}
+
+/* =================== example data (shown until you start your own) =================== */
+function ymAhead(y){ const n=new Date(), t=n.getFullYear()*12+n.getMonth()+Math.round(y*12); return `${Math.floor(t/12)}-${String(t%12+1).padStart(2,"0")}`; }
+const DEFAULT_PROFILE = {name:"", income_usd:0, income_inr:0, essentials_usd:0, essentials_inr:0, lifestyle_pct:10,
+  emergency_balance_usd:0, emergency_months:4, starter_emergency_months:1, fx_usd_inr:88, fx_drift_pct:2, remit_fee_pct:1,
+  debt_strategy:"avalanche", high_interest_apr:12, low_interest_apr:6, min_goal_share_pct:20, inflation_usd_pct:3, inflation_inr_pct:5.5};
+function exampleState(){ return { demo:true, checkins:[],
+  profile:{...DEFAULT_PROFILE, name:"Example student", income_usd:5200, essentials_usd:2300, essentials_inr:15000, emergency_balance_usd:1500},
+  debts:[
+    {name:"US credit card", country:"US", currency:"USD", kind:"Short-term", balance:3200, apr:24.9, min_payment:100},
+    {name:"Personal loan", country:"India", currency:"INR", kind:"Short-term", balance:250000, apr:14, min_payment:8000},
+    {name:"Education loan", country:"India", currency:"INR", kind:"Education", balance:1800000, apr:9.5, min_payment:25000},
+    {name:"Loan from family", country:"India", currency:"INR", kind:"Informal", balance:100000, apr:0, min_payment:5000}],
+  goals:[
+    {name:"Vacation", country:"US", currency:"USD", target_amount:2500, target_date:ymAhead(1), priority:4, current_value:0},
+    {name:"Wedding", country:"India", currency:"INR", target_amount:1500000, target_date:ymAhead(3), priority:2, current_value:0},
+    {name:"Land in India", country:"India", currency:"INR", target_amount:3000000, target_date:ymAhead(5), priority:1, current_value:0},
+    {name:"Build rental house", country:"India", currency:"INR", target_amount:4000000, target_date:ymAhead(9), priority:3, current_value:0},
+    {name:"US house down payment", country:"US", currency:"USD", target_amount:60000, target_date:ymAhead(8), priority:3, current_value:0}]}; }
+function blankState(){ return {demo:false, profile:{...DEFAULT_PROFILE}, debts:[], goals:[], checkins:[]}; }
+
+/* =================== storage: private per person =================== */
+let S = exampleState(), store = {kind:"none"}, saveTimer = null, canWrite = true;
+const $ = s => document.querySelector(s);
+const setSave = t => { $("#saveState").textContent = t; };
+async function initStore(){
+  try {
+    const [db, user] = await Promise.all([window.claude?.use?.("db"), window.claude?.use?.("user")]);
+    if (db && user){
+      const id = await user.id();
+      if (id){
+        store = {kind:"db", ref: db.doc(`data/users/${id}/plan`)};
+        const snap = await store.ref.get();
+        const data = snap.exists ? snap.data() : null;
+        if (data && data.state){ S = JSON.parse(data.state); render(); }
+        setSave("Saved privately to your account");
+        return;
+      }
+    }
+  } catch(e){ /* fall through to browser storage */ }
+  try { const raw = localStorage.getItem("bridgeledger"); if (raw){ S = JSON.parse(raw); render(); } store = {kind:"local"};
+    setSave("Saved in this browser only"); } catch(e){ store = {kind:"none"}; setSave("Not saved: storage unavailable"); }
+}
+function persist(){
+  if (S.demo) return;
+  clearTimeout(saveTimer); setSave("Saving…");
+  saveTimer = setTimeout(async () => {
+    const payload = JSON.stringify(S);
+    try {
+      if (store.kind==="db"){ await store.ref.set({state:payload, updated:Date.now()}); setSave("Saved privately to your account"); }
+      else if (store.kind==="local"){ localStorage.setItem("bridgeledger", payload); setSave("Saved in this browser only"); }
+      else setSave("Not saved: storage unavailable");
+    } catch(e){
+      if (e && e.code==="invalid_argument"){ canWrite=false; setSave("You can view but not save here. Ask the owner for Contributor access."); }
+      else setSave("Couldn't save. Your changes are kept on this page; try again in a moment.");
+    }
+  }, 700);
+}
+function update(fn){ fn(); persist(); render(); }
+
+/* =================== formatting =================== */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function money(a, c="USD"){ if (a==null || isNaN(a)) return "–";
+  if (c==="INR"){ const x=Math.abs(a); if (x>=1e7) return `₹${(a/1e7).toFixed(2)} Cr`; if (x>=1e5) return `₹${(a/1e5).toFixed(2)} L`;
+    return "₹" + Math.round(a).toLocaleString("en-IN"); }
+  return "$" + Math.round(a).toLocaleString("en-US"); }
+const ccy = c => `<span class="ccy ${esc(c)}">${esc(c)}</span>`;
+function niceMonth(ym){ if (!ym) return "–"; if (ym==="clear") return "Already clear";
+  const [y,m]=ym.split("-").map(Number); return new Date(y,m-1,1).toLocaleString("en-US",{month:"short", year:"numeric"}); }
+const statusPill = s => s==="On track" ? `<span class="pill good">On track</span>` : s.startsWith("Late") ? `<span class="pill warn">${esc(s)}</span>` : `<span class="pill bad">${esc(s)}</span>`;
+
+/* =================== views =================== */
+let tab = "home", whatIf = 0;
+const TAB_IDS = ["home","plan","debts","goals","checkin","setup"];
+function banner(){
+  const b = $("#banner");
+  if (S.demo) b.innerHTML = `<div class="banner"><p><b>You're looking at an example plan</b> for a fictional student, so you can see how it works. Nothing here is saved.</p>
+    <div class="row"><button class="btn" data-act="start">Start my own plan</button><button class="btn ghost" data-act="copy">Start from this example</button></div></div>`;
+  else if (!S.profile.name) b.innerHTML = `<div class="banner"><p><b>Welcome.</b> Fill in Setup first, then your debts and goals. Your plan updates as you type.</p>
+    <div class="row"><button class="btn" data-goto="setup">Go to Setup</button></div></div>`;
+  else b.innerHTML = "";
+}
+
+function homeView(P){
+  const nwUsd = (()=>{ const fx=+S.profile.fx_usd_inr; const c=(a,k)=>(+a||0)/(k==="INR"?fx:1);
+    const assets=(+S.profile.emergency_balance_usd||0)+S.goals.reduce((s,g)=>s+c(g.current_value,g.currency),0);
+    const liab=S.debts.reduce((s,d)=>s+c(d.balance,d.currency),0); return {assets, liab, nw:assets-liab}; })();
+  const on = P.goals.filter(g=>g.status==="On track").length;
+  const first = P.ledger[0] || {};
+  const buckets = [["Essentials",first.essentials,"var(--muted)"],["Lifestyle",first.lifestyle,"var(--accent)"],
+    ["Debt minimums",first.dmin,"var(--bad)"],["Extra debt",first.dextra,"var(--bad)"],["Emergency",first.emergency,"var(--usd)"],
+    ["Goals",first.goals,"var(--good)"],["Unallocated",first.unallocated,"var(--rule)"]].filter(b=>b[1]>0.5);
+  const max = Math.max(1, ...buckets.map(b=>b[1]));
+  const lines = P.lines.filter(l=>l.amount>0.5 || l.bucket==="Goal SIP");
+  const groups = {}; for (const l of lines) (groups[l.bucket] ||= []).push(l);
+  const last = [...(S.checkins||[])].sort((a,b)=>a.month<b.month?1:-1)[0];
+  let streak=0; for (const c of [...(S.checkins||[])].sort((a,b)=>a.month<b.month?1:-1)){ if (c.score>=70) streak++; else break; }
+  return `
+  ${P.warnings.map(w=>`<div class="warn">${esc(w)}</div>`).join("")}
+  <div class="kpis">
+    <div class="kpi"><h3>Debt-free</h3><div class="v">${niceMonth(P.debtFree)}</div><div class="s">${money(nwUsd.liab)} owed today</div></div>
+    <div class="kpi"><h3>Emergency fund full</h3><div class="v">${niceMonth(P.efFull)}</div><div class="s">${S.profile.emergency_months} months of essentials</div></div>
+    <div class="kpi"><h3>Goals on track</h3><div class="v">${on} / ${P.goals.length}</div><div class="s">by their target dates</div></div>
+    <div class="kpi"><h3>Net worth</h3><div class="v">${money(nwUsd.nw)}</div><div class="s">US + India, in USD</div></div>
+  </div>
+  <h2>Where this month's money goes</h2>
+  <div class="grid2">
+    <div class="sheet">
+      <h3>Monthly waterfall, USD</h3>
+      <div class="bars">${buckets.map(([n,v,c])=>`<div class="bar"><span>${n}</span><span class="t"><i style="width:${(v/max*100).toFixed(1)}%;background:${c}"></i></span><span class="num" style="text-align:right">${money(v)}</span></div>`).join("") || `<p class="muted">Add your income in Setup to see this.</p>`}</div>
+      <p class="small muted" style="margin:12px 0 0">Money flows top to bottom. Each bucket only gets what's left after the ones above it.</p>
+    </div>
+    <div class="sheet">
+      <h3>Do this month</h3>
+      <div class="list">${Object.entries(groups).filter(([k])=>k!=="Lifestyle").map(([k,ls])=>ls.map(l=>`
+        <div class="line"><span><span class="tag">${esc(k)}</span><b>${esc(l.item)}</b></span><span class="num">${money(l.amount,l.currency)}</span>
+        <small>${esc(l.note)}${l.need && l.amount + .5 < l.need ? ` · needs ${money(l.need,l.currency)}/mo on its own; gets more once debts clear` : ""}</small></div>`).join("")).join("") || `<p class="muted">Nothing to do yet.</p>`}
+      </div>
+    </div>
+  </div>
+  <h2>Goals</h2>
+  <div class="sheet tbl">${goalTable(P)}</div>
+  <h2>Discipline</h2>
+  <div class="sheet row" style="justify-content:space-between">
+    ${last ? `<div><h3>Last check-in · ${niceMonth(last.month)}</h3><div class="score">${last.score}<span class="muted" style="font-size:1rem">/100</span></div></div>
+      <div><h3>Streak</h3><div class="score">${streak}<span class="muted" style="font-size:1rem"> month${streak===1?"":"s"} ≥ 70</span></div></div>`
+      : `<p style="margin:0">No check-ins yet. At the end of each month, record what you actually did.</p>`}
+    <button class="btn ghost" data-goto="checkin">Monthly check-in</button>
+  </div>`;
+}
+
+function goalTable(P){
+  if (!P.goals.length) return `<p class="muted" style="margin:0">No goals yet. Add them on the Goals tab.</p>`;
+  return `<table><thead><tr><th>Goal</th><th>Target date</th><th class="r">Cost then</th><th class="r">Needs / mo</th><th class="r">Gets now</th><th>Mix today</th><th>Projected</th><th>Status</th></tr></thead><tbody>
+  ${P.goals.map(g=>`<tr><td><b>${esc(g.name)}</b> ${ccy(g.currency)} <span class="muted small">P${g.priority}</span></td>
+    <td class="num">${niceMonth(g.date)}</td><td class="r num">${money(g.T,g.currency)}</td><td class="r num">${money(g.need,g.currency)}</td>
+    <td class="r num">${money(g.planned,g.currency)}</td><td class="small">${g.mix}% equity · ${g.horizon}</td>
+    <td class="num">${niceMonth(g.done)}</td><td>${statusPill(g.status)}</td></tr>`).join("")}</tbody></table>
+  <p class="small muted" style="margin:10px 0 0">"Cost then" adds inflation to today's price. "Gets now" can be lower than "Needs" while high-interest debt is being cleared. The plan catches up afterwards.</p>`;
+}
+
+function debtChart(P){
+  const L = P.ledger; if (!L.length || !P.debts.length) return "";
+  const n = Math.min(L.length, (()=>{ const i=L.findIndex(r=>r.debtUsd<=0.5); return i<0?L.length:i+2; })());
+  const pts = L.slice(0,n), W=640, H=220, pl=58, pr=14, pt=14, pb=28, max = Math.max(1, ...pts.map(r=>r.debtUsd));
+  const nice = (()=>{ const p=Math.pow(10,Math.floor(Math.log10(max))); return Math.ceil(max/p)*p; })();
+  const x = i => pl + (W-pl-pr) * i/Math.max(1,n-1), y = v => pt + (H-pt-pb) * (1 - v/nice);
+  const path = pts.map((r,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(r.debtUsd).toFixed(1)}`).join("");
+  const ticks = [0,.5,1].map(f=>nice*f);
+  const years = []; for (let i=0;i<n;i++) if (pts[i].month.endsWith("-01")) years.push(i);
+  const marks = P.debts.filter(d=>d.paid && d.paid!=="clear").map(d=>{ const i=pts.findIndex(r=>r.month===d.paid); return i<0?"":
+    `<circle cx="${x(i)}" cy="${y(pts[i].debtUsd)}" r="4" fill="var(--sheet)" stroke="var(--bad)" stroke-width="2"><title>${esc(d.name)} paid off ${niceMonth(d.paid)}</title></circle>`; }).join("");
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Total debt over time">
+    ${ticks.map(v=>`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end">${money(v)}</text>`).join("")}
+    ${years.map(i=>`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${pts[i].month.slice(0,4)}</text>`).join("")}
+    <path d="${path}L${x(n-1)},${y(0)}L${x(0)},${y(0)}Z" fill="var(--bad)" opacity=".13"/>
+    <path d="${path}" fill="none" stroke="var(--bad)" stroke-width="2"/>${marks}</svg>
+    <div class="legend"><span><i style="background:var(--bad)"></i>Total debt in USD</span><span>○ a debt paid off (hover for name)</span></div></div>`;
+}
+
+function flowChart(P){
+  const by = {}; for (const r of P.ledger){ const y=r.month.slice(0,4); const o=(by[y] ||= {debt:0, emergency:0, goals:0}); o.debt+=r.dmin+r.dextra; o.emergency+=r.emergency; o.goals+=r.goals; }
+  const yrs = Object.keys(by).slice(0,12); if (!yrs.length) return "";
+  const W=640, H=220, pl=58, pr=10, pt=12, pb=28, max=Math.max(1,...yrs.map(y=>by[y].debt+by[y].emergency+by[y].goals));
+  const nice=(()=>{ const p=Math.pow(10,Math.floor(Math.log10(max))); return Math.ceil(max/p)*p; })();
+  const bw=(W-pl-pr)/yrs.length, y=v=>pt+(H-pt-pb)*(1-v/nice), cols=[["debt","var(--bad)"],["emergency","var(--usd)"],["goals","var(--good)"]];
+  const bars = yrs.map((yr,i)=>{ let acc=0; return cols.map(([k,c])=>{ const v=by[yr][k]; const r=`<rect x="${pl+i*bw+bw*.18}" y="${y(acc+v)}" width="${bw*.64}" height="${Math.max(0,y(acc)-y(acc+v))}" fill="${c}"><title>${yr} ${k}: ${money(v)}</title></rect>`; acc+=v; return r; }).join("") + `<text x="${pl+i*bw+bw/2}" y="${H-8}" text-anchor="middle">'${yr.slice(2)}</text>`; }).join("");
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Yearly split between debt, emergency fund and goals">
+    ${[0,.5,1].map(f=>`<line x1="${pl}" x2="${W-pr}" y1="${y(nice*f)}" y2="${y(nice*f)}" stroke="var(--rule)"/><text x="${pl-8}" y="${y(nice*f)+4}" text-anchor="end">${money(nice*f)}</text>`).join("")}${bars}</svg>
+    <div class="legend"><span><i style="background:var(--bad)"></i>Debt payments</span><span><i style="background:var(--usd)"></i>Emergency fund</span><span><i style="background:var(--good)"></i>Goal investing</span></div></div>`;
+}
+
+function timelineChart(P){
+  if (!P.goals.length) return "";
+  const end = Math.max(12, ...P.goals.map(g=>Math.max(g.deadline, g.done ? monthsBetween(P.start,g.done) : g.deadline)))+6;
+  const W=640, rowH=34, pl=150, pr=16, H=P.goals.length*rowH+30, x=m=>pl+(W-pl-pr)*Math.max(0,m)/end;
+  const yrTicks=[]; for (let m=0;m<=end;m++) if (monthLabel(P.start,m).endsWith("-01")) yrTicks.push(m);
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Goal timelines">
+    ${yrTicks.map(m=>`<line x1="${x(m)}" x2="${x(m)}" y1="0" y2="${H-22}" stroke="var(--rule)"/><text x="${x(m)}" y="${H-6}" text-anchor="middle">${monthLabel(P.start,m).slice(0,4)}</text>`).join("")}
+    ${P.goals.map((g,i)=>{ const cy=i*rowH+18, fin=g.done?monthsBetween(P.start,g.done):null, late=g.status!=="On track";
+      return `<text x="${pl-10}" y="${cy+4}" text-anchor="end" style="fill:var(--ink);font-family:var(--f-body);font-size:12px">${esc(g.name.length>20?g.name.slice(0,19)+"…":g.name)}</text>
+      <line x1="${x(0)}" x2="${x(g.deadline)}" y1="${cy}" y2="${cy}" stroke="var(--rule)" stroke-width="8" stroke-linecap="round"/>
+      ${fin!=null?`<line x1="${x(0)}" x2="${x(fin)}" y1="${cy}" y2="${cy}" stroke="${late?"var(--warn)":"var(--good)"}" stroke-width="8" stroke-linecap="round" opacity=".85"/>`:""}
+      <line x1="${x(g.deadline)}" x2="${x(g.deadline)}" y1="${cy-9}" y2="${cy+9}" stroke="var(--ink)" stroke-width="2"><title>Target ${niceMonth(g.date)}</title></line>`; }).join("")}</svg>
+    <div class="legend"><span><i style="background:var(--good)"></i>Reached by target</span><span><i style="background:var(--warn)"></i>Reached late</span><span>│ target date</span></div></div>`;
+}
+
+function planView(P){
+  const base = whatIf ? runPlan(S.profile, S.debts, S.goals, 0) : P;
+  const delta = (a,b) => !whatIf || a===b ? "" : `<div class="s">was ${niceMonth(b)}</div>`;
+  const p = S.profile;
+  return `
+  <div class="sheet"><div class="slider"><label for="whatif"><b>What if I had more each month?</b> <span class="muted small">A raise, side income or a spending cut</span></label>
+    <span class="num" id="whatifVal">+${money(whatIf)}</span><input id="whatif" type="range" min="0" max="3000" step="100" value="${whatIf}"></div></div>
+  <div class="kpis" style="margin-top:12px">
+    <div class="kpi"><h3>Debt-free</h3><div class="v">${niceMonth(P.debtFree)}</div>${delta(P.debtFree, base.debtFree)}</div>
+    <div class="kpi"><h3>Emergency fund full</h3><div class="v">${niceMonth(P.efFull)}</div>${delta(P.efFull, base.efFull)}</div>
+    <div class="kpi"><h3>Goals on track</h3><div class="v">${P.goals.filter(g=>g.status==="On track").length} / ${P.goals.length}</div>${whatIf?`<div class="s">was ${base.goals.filter(g=>g.status==="On track").length}</div>`:""}</div>
+  </div>
+  <h2>Goal timelines</h2><div class="sheet">${timelineChart(P) || `<p class="muted" style="margin:0">Add goals to see timelines.</p>`}</div>
+  <h2>Debt payoff</h2>
+  <div class="grid2"><div class="sheet">${debtChart(P) || `<p class="muted" style="margin:0">No debts. Everything goes to goals.</p>`}</div>
+    <div class="sheet tbl">${P.debts.length?`<table><thead><tr><th>Debt</th><th class="r">Rate</th><th>Paid off</th><th class="r">Interest</th></tr></thead><tbody>
+    ${P.debts.map(d=>`<tr><td><b>${esc(d.name)}</b> ${ccy(d.currency)}</td><td class="r num">${d.apr.toFixed(1)}%</td><td class="num">${d.paid?niceMonth(d.paid):"Beyond 40 yrs"}</td><td class="r num">${money(d.interest,d.currency)}</td></tr>`).join("")}</tbody></table>
+    <p class="small muted" style="margin:10px 0 0">Strategy: <b>${p.debt_strategy==="snowball"?"snowball (smallest balance first)":"avalanche (highest interest first)"}</b>. When one debt is paid off, its payment rolls to the next.</p>`:""}</div></div>
+  <h2>How your money shifts over the years</h2>
+  <div class="sheet">${flowChart(P)}<p class="small muted" style="margin:8px 0 0">The red bars shrink and the green bars grow as debts clear. That's the rollover at work.</p></div>
+  <h2>Goals in detail</h2><div class="sheet tbl">${goalTable(P)}</div>
+  <h2>The rulebook</h2>
+  <div class="sheet rules"><p style="margin-top:0">Every month, money flows through this order:</p><ol>
+    <li><b>Essentials</b>, in the US and India</li>
+    <li><b>Lifestyle</b>: ${p.lifestyle_pct}% of income, guilt-free</li>
+    <li><b>Minimum payments</b> on every debt</li>
+    <li><b>Starter emergency fund</b>: ${p.starter_emergency_months} month(s) of essentials</li>
+    <li><b>High-interest debt</b> (${p.high_interest_apr}%+ interest) gets the rest, except ${p.min_goal_share_pct}% that keeps your goals moving. Once it's gone, the <b>full emergency fund</b> (${p.emergency_months} months) fills up</li>
+    <li><b>Goal SIPs</b> by priority, each sized to hit its date, with a glide path: more equity when the goal is far, safer assets as it gets close</li>
+    <li><b>Leftover</b> goes to debt at ${p.low_interest_apr}%+ interest, then to your top goal</li></ol>
+    <p class="small muted">Debts under ${p.low_interest_apr}% only get minimums, because investing is expected to earn more. INR income pays INR costs first; money sent from the US costs ${p.remit_fee_pct}% in fees, and the rupee is assumed to weaken ${p.fx_drift_pct}% a year.
+    Expected returns (USD 8% equity / 4% safe, INR 11% / 6.5%) are planning assumptions, not predictions or investment advice.</p></div>`;
+}
+
+const DEBT_COLS = [["name","Debt","text"],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["kind","Type",["Short-term","Education","Informal","Other"]],["balance","Balance","number"],["apr","Interest %/yr","number"],["min_payment","Min. payment/mo","number"]];
+const GOAL_COLS = [["name","Goal","text"],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["target_amount","Cost in today's money","number"],["target_date","Target date","month"],["priority","Priority (1 = top)",["1","2","3","4","5"]],["current_value","Already saved","number"]];
+function editTable(kind, cols){
+  const rows = S[kind];
+  const cell = (r,i,[k,,t]) => Array.isArray(t)
+    ? `<select data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${k}">${t.map(o=>`<option ${String(r[k])===o?"selected":""}>${o}</option>`).join("")}</select>`
+    : `<input data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${k}" type="${t}" value="${esc(r[k])}" ${t==="number"?'min="0" step="any"':""}>`;
+  return `<div class="tbl"><table class="edit"><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join("")}<th></th></tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr>${cols.map(c=>`<td>${cell(r,i,c)}</td>`).join("")}<td><button class="btn ghost small" data-del="${kind}" data-i="${i}" aria-label="Remove row">Remove</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="row" style="margin-top:12px"><button class="btn small" data-add="${kind}">+ Add ${kind==="debts"?"a debt":"a goal"}</button></div>`;
+}
+function debtsView(){
+  const fx=+S.profile.fx_usd_inr, tot=S.debts.reduce((s,d)=>s+(+d.balance||0)/(d.currency==="INR"?fx:1),0);
+  const hi = S.debts.filter(d=>+d.apr>=+S.profile.high_interest_apr).map(d=>d.name);
+  return `<p class="lead">Everything you owe, in the US and in India. Enter amounts in each debt's own currency. Include short-term debt like credit cards and money borrowed from family.</p>
+  <div class="sheet">${editTable("debts", DEBT_COLS)}</div>
+  <div class="kpis" style="margin-top:12px"><div class="kpi"><h3>Total owed, in USD</h3><div class="v">${money(tot)}</div></div>
+  <div class="kpi"><h3>Gets attacked first</h3><div class="s" style="font-size:.95rem;color:var(--ink)">${hi.length?esc(hi.join(", ")):"No high-interest debt"}</div><div class="s">${S.profile.high_interest_apr}%+ interest</div></div></div>`;
+}
+function goalsView(){
+  return `<p class="lead">What you're investing toward. Enter the cost <b>in today's money</b>; inflation is added for you. Priority 1 gets funded first.</p>
+  <div class="sheet">${editTable("goals", GOAL_COLS)}</div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="sheet"><h3>How each goal is invested</h3><table><thead><tr><th>Years to goal</th><th class="r">Equity</th><th class="r">Safer assets</th></tr></thead><tbody>
+      ${GLIDE.map(([y,s])=>`<tr><td>${y===0?"Under 1":y+"+"}</td><td class="r num">${Math.round(s*100)}%</td><td class="r num">${Math.round((1-s)*100)}%</td></tr>`).join("")}</tbody></table></div>
+    <div class="sheet"><h3>Ideas</h3><p class="small" style="margin:0"><b>Under 2 years:</b> vacation, laptop, travel home. Kept mostly in cash-like assets.<br><b>2 to 5 years:</b> wedding, land in India, a car. A balanced mix.<br><b>5+ years:</b> US house down payment, building a rental house. Mostly equity, shifting safer as the date nears.</p></div></div>`;
+}
+function checkinView(P){
+  const f = P.ledger[0] || {}; const pl = {lifestyle:f.lifestyle||0, debt:(f.dmin||0)+(f.dextra||0), invest:(f.goals||0)+(f.emergency||0)};
+  const nowYm = monthLabel(P.start,0), hist=[...(S.checkins||[])].sort((a,b)=>a.month<b.month?1:-1);
+  return `<p class="lead">Five minutes at the end of each month. Compare what you planned with what you actually did. This is where the discipline comes from.</p>
+  <div class="kpis"><div class="kpi"><h3>Planned lifestyle</h3><div class="v">${money(pl.lifestyle)}</div></div>
+    <div class="kpi"><h3>Planned debt payments</h3><div class="v">${money(pl.debt)}</div></div>
+    <div class="kpi"><h3>Planned investing + emergency</h3><div class="v">${money(pl.invest)}</div></div></div>
+  <form id="ckForm" class="sheet" style="margin-top:12px"><div class="form">
+    <label for="ck-month"><span>Month</span><input id="ck-month" type="month" value="${nowYm}" required></label>
+    <label for="ck-life"><span>Lifestyle spending (USD)</span><input id="ck-life" type="number" min="0" step="any" required></label>
+    <label for="ck-debt"><span>Total debt payments (USD equivalent)</span><input id="ck-debt" type="number" min="0" step="any" required></label>
+    <label for="ck-inv"><span>Invested + emergency fund (USD equivalent)</span><input id="ck-inv" type="number" min="0" step="any" required></label>
+    <label for="ck-notes" style="grid-column:1/-1"><span>What went well, and what to fix next month?</span><textarea id="ck-notes" rows="2"></textarea></label></div>
+    <div class="row" style="margin-top:12px"><button class="btn" type="submit">Save check-in</button><span id="ckResult" class="muted"></span></div></form>
+  ${hist.length?`<h2>History</h2><div class="sheet tbl"><table><thead><tr><th>Month</th><th class="r">Score</th><th class="r">Lifestyle</th><th class="r">Debt paid</th><th class="r">Invested</th><th>Notes</th><th></th></tr></thead><tbody>
+    ${hist.map(c=>`<tr><td class="num">${niceMonth(c.month)}</td><td class="r"><span class="pill ${c.score>=85?"good":c.score>=70?"warn":"bad"}">${c.score}</span></td>
+    <td class="r num">${money(c.lifestyle)} <span class="muted small">/ ${money(c.pl.lifestyle)}</span></td><td class="r num">${money(c.debt)} <span class="muted small">/ ${money(c.pl.debt)}</span></td>
+    <td class="r num">${money(c.invest)} <span class="muted small">/ ${money(c.pl.invest)}</span></td><td class="small">${esc(c.notes)}</td>
+    <td><button class="btn ghost small" data-delck="${esc(c.month)}">Remove</button></td></tr>`).join("")}</tbody></table></div>`:""}`;
+}
+function setupView(){
+  const p=S.profile, F=(k,label,attrs="")=>`<label for="p-${k}"><span>${label}</span><input id="p-${k}" data-p="${k}" value="${esc(p[k])}" ${attrs}></label>`;
+  const N=(k,label,step=1)=>F(k,label,`type="number" min="0" step="${step}"`);
+  return `<p class="lead">Your income, fixed costs and the rules your plan follows. All amounts are monthly. Changes apply right away.</p>
+  <fieldset><legend>You</legend><div class="form">${F("name","Your name",'type="text" autocomplete="given-name"')}</div></fieldset>
+  <fieldset><legend>Income, after tax</legend><div class="form">${N("income_usd","Income in the US (USD)",50)}${N("income_inr","Income in India (INR), e.g. rent",500)}</div></fieldset>
+  <fieldset><legend>Essentials</legend><div class="form">${N("essentials_usd","US essentials (USD): rent, food, transport, insurance",50)}${N("essentials_inr","India essentials (INR): family support, bills",500)}</div></fieldset>
+  <fieldset><legend>Lifestyle and safety net</legend><div class="form">${N("lifestyle_pct","Guilt-free spending (% of income)",1)}${N("emergency_balance_usd","Emergency fund saved today (USD)",50)}${N("emergency_months","Emergency fund target (months of essentials)",.5)}</div></fieldset>
+  <fieldset><legend>Currency</legend><div class="form">${N("fx_usd_inr","USD to INR rate",.25)}${F("fx_drift_pct","Assumed yearly rupee weakening %",'type="number" step="0.5"')}${N("remit_fee_pct","Cost of sending money home % (fees + FX markup)",.1)}</div>
+    <p class="small muted" style="margin:10px 0 0">Check today's rate on your remittance app and update it here now and then.</p></fieldset>
+  <fieldset><legend>Plan rules</legend><div class="form">
+    <label for="p-debt_strategy"><span>Debt strategy</span><select id="p-debt_strategy" data-p="debt_strategy"><option value="avalanche" ${p.debt_strategy==="avalanche"?"selected":""}>Avalanche: highest interest first (cheapest)</option><option value="snowball" ${p.debt_strategy==="snowball"?"selected":""}>Snowball: smallest balance first (motivating)</option></select></label>
+    ${N("min_goal_share_pct","Share kept for goals while clearing high-interest debt (%)",5)}${N("high_interest_apr","High-interest threshold (% per year)",.5)}${N("low_interest_apr","Low-interest threshold: only minimums below this (%)",.5)}
+    ${N("starter_emergency_months","Starter emergency fund (months)",.5)}${N("inflation_usd_pct","US inflation %",.5)}${N("inflation_inr_pct","India inflation %",.5)}</div></fieldset>
+  <fieldset><legend>Start over</legend><p class="small" style="margin:0 0 10px">Delete everything you've entered and begin again as a new user.</p>
+    <div class="row"><button class="btn danger small" data-act="reset1" id="reset1">Delete my data</button><span id="resetConfirm" hidden><span class="small">Are you sure? This can't be undone.</span> <button class="btn danger small" data-act="reset2">Yes, delete everything</button> <button class="btn ghost small" data-act="reset0">Cancel</button></span></div></fieldset>`;
+}
+
+function render(){
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===tab)));
+  banner();
+  const P = runPlan(S.profile, S.debts, S.goals, tab==="plan" ? whatIf : 0);
+  const v = $("#view");
+  v.innerHTML = tab==="home" ? homeView(P) : tab==="plan" ? planView(P) : tab==="debts" ? debtsView() : tab==="goals" ? goalsView() : tab==="checkin" ? checkinView(P) : setupView();
+  const greet = S.profile.name && !S.demo ? ` for ${S.profile.name.split(" ")[0]}` : "";
+  document.querySelector(".brand p").textContent = `One plan for your US and India money${greet}`;
+}
+
+/* =================== events =================== */
+document.addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.tab){ tab = t.dataset.tab; try{ localStorage.setItem("bl-tab", tab); }catch(_){}; render(); window.scrollTo({top:0}); return; }
+  if (t.dataset.goto){ tab = t.dataset.goto; render(); window.scrollTo({top:0}); return; }
+  const act = t.dataset.act;
+  if (act==="start"){ S = blankState(); tab="setup"; persist(); render(); return; }
+  if (act==="copy"){ const ex=exampleState(); S = {...ex, demo:false, profile:{...ex.profile, name:""}}; tab="setup"; persist(); render(); return; }
+  if (act==="reset1"){ $("#resetConfirm").hidden=false; t.hidden=true; return; }
+  if (act==="reset0"){ render(); return; }
+  if (act==="reset2"){ S = blankState(); tab="setup"; persist(); render(); return; }
+  if (t.dataset.add){ const k=t.dataset.add; update(()=>S[k].push(k==="debts"
+      ? {name:"", country:"US", currency:"USD", kind:"Short-term", balance:0, apr:0, min_payment:0}
+      : {name:"", country:"US", currency:"USD", target_amount:0, target_date:ymAhead(3), priority:3, current_value:0}));
+    const inp = document.querySelector(`#${k}-${S[k].length-1}-name`); inp && inp.focus(); return; }
+  if (t.dataset.del){ update(()=>S[t.dataset.del].splice(+t.dataset.i,1)); return; }
+  if (t.dataset.delck){ update(()=>{ S.checkins = S.checkins.filter(c=>c.month!==t.dataset.delck); }); return; }
+});
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.id==="whatif"){ whatIf = +el.value; render(); const w=$("#whatif"); w && w.focus(); return; }
+  if (el.dataset.k){ const {k,i,f} = el.dataset; let v = el.value;
+    if (el.type==="number" || ["priority"].includes(f)) v = el.value==="" ? 0 : +el.value;
+    update(()=>{ S[k][+i][f] = v; if (f==="country") S[k][+i].currency = v==="India" ? "INR" : "USD"; }); return; }
+  if (el.dataset.p){ const f=el.dataset.p; update(()=>{ S.profile[f] = (el.type==="number") ? (el.value===""?0:+el.value) : el.value; }); }
+});
+document.addEventListener("input", e => {
+  if (e.target.id==="whatif"){ $("#whatifVal").textContent = "+" + money(+e.target.value); }
+});
+document.addEventListener("submit", e => {
+  if (e.target.id!=="ckForm") return; e.preventDefault();
+  const P = runPlan(S.profile, S.debts, S.goals, 0), f=P.ledger[0]||{};
+  const pl = {lifestyle:f.lifestyle||0, debt:(f.dmin||0)+(f.dextra||0), invest:(f.goals||0)+(f.emergency||0)};
+  const ac = {lifestyle:+$("#ck-life").value||0, debt:+$("#ck-debt").value||0, invest:+$("#ck-inv").value||0};
+  const month = $("#ck-month").value, score = disciplineScore(pl, ac);
+  update(()=>{ S.checkins = (S.checkins||[]).filter(c=>c.month!==month); S.checkins.push({month, ...ac, pl, score, notes:$("#ck-notes").value}); });
+  $("#ckResult").textContent = `Saved. Score ${score}/100. Now update your balances on Debts, Goals and Setup so next month starts from reality.`;
+});
+
+try { const t = localStorage.getItem("bl-tab"); if (TAB_IDS.includes(t)) tab = t; } catch(_){}
+render();
+initStore();
+</script>

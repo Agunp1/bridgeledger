@@ -9,6 +9,8 @@ land in India, a house in the US, a wedding, travel.
 BridgeLedger turns all of that into **one monthly plan**: what to pay, what to invest, where, and what you can
 spend guilt-free. A monthly check-in then tracks whether you actually followed it.
 
+**Live app:** https://claude.ai/artifact/TwnXAZm5SS8rjAL36S3RmN (runs in the browser, each person's data is private to their account)
+
 ## What it does
 
 | | |
@@ -48,7 +50,14 @@ Every threshold is editable on the Setup page.
 Expected returns (`core/assumptions.py`) are per currency: USD equity 8% / safe 4%, INR equity 11% / safe 6.5%.
 They are planning assumptions, not predictions.
 
-## Quick start
+## Two versions
+
+- **Web version** (`web/index.html`): a single-page app with the same planning engine in JavaScript, published at the link above. Nothing to install.
+- **Python version** (`app.py` + `pages/`): Streamlit + SQLite, runs on your own computer. Good for extending with Python and pandas.
+
+Both produce identical plans for the same inputs.
+
+## Quick start (Python version)
 
 ```bash
 git clone https://github.com/Agunp1/bridgeledger.git
@@ -69,6 +78,7 @@ API for today's USD→INR rate.
 ## Project structure
 
 ```
+web/index.html         Browser version (published link)
 app.py                 Dashboard: this month's plan, goals, discipline streak
 pages/
   1_Setup.py           Income, essentials, currency, plan rules
