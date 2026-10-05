@@ -174,7 +174,7 @@ class Wallet {
     if (this.usd<0 && this.usd>-1e-6) this.usd=0; if (this.inr<0 && this.inr>-1e-4) this.inr=0; return spent; }
 }
 
-function runPlan(p, debtsIn, goalsIn, extra=0){
+function runPlan(p, debtsIn, goalsIn, extra=0, shock=0){
   const now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), 1);
   const fx0 = +p.fx_usd_inr, drift = +p.fx_drift_pct/100, strategy = p.debt_strategy;
   const hi = +p.high_interest_apr, lo = +p.low_interest_apr, gshare = +p.min_goal_share_pct/100;
@@ -183,7 +183,8 @@ function runPlan(p, debtsIn, goalsIn, extra=0){
     const endOff = /^\d{4}-\d{2}$/.test(d.ends||"") ? monthsBetween(start, d.ends) : null;
     const startOff = /^\d{4}-\d{2}$/.test(d.pay_start||"") ? Math.max(0, monthsBetween(start, d.pay_start)) : 0;
     const emi0 = +d.min_payment || (repay==="emi" && endOff!=null && endOff>=0 ? annuity(bal, +d.apr, endOff+1) : 0);
-    return {...d, repay, bal, endOff, startOff, emi0, emiNow:null, lastInterest:0, interest:0, paid: bal>0.005?null:"clear"}; });
+    const apr = Math.max(0, (+d.apr||0) + (d.rate_type==="floating" ? shock : 0));
+    return {...d, apr, apr0:+d.apr||0, repay, bal, endOff, startOff, emi0, emiNow:null, lastInterest:0, interest:0, paid: bal>0.005?null:"clear"}; });
   const minDue = (d,t) => {
     if (d.repay==="moratorium"){ if (t < d.startOff) return 0;
       if (d.emiNow==null) d.emiNow = +d.min_payment || (d.endOff!=null && d.endOff>=t ? annuity(d.bal, +d.apr, d.endOff-t+1) : 0); return d.emiNow; }
@@ -270,7 +271,7 @@ function runPlan(p, debtsIn, goalsIn, extra=0){
             saved:+g.current_value||0, need:g.need, planned:g.planned, done:g.done, status, late, deadline:g.deadline,
             mix:Math.round(eqShare(g.deadline)*g.rf*100), horizon:horizonLabel(g.deadline)}; });
   for (const d of D) if (!d.paid && !D.some(x=>x===d && x.warnedShort)) warnings.push(`"${d.name}" won't be paid off within 40 years with its current payment. Add a monthly payment or an end date on the Debts tab.`);
-  const debts = D.map(d=>({name:d.name, lender:d.lender||"", kind:d.kind, repay:d.repay, currency:d.currency, apr:+d.apr, balance:+d.balance||0, paid:d.paid, interest:d.interest, firstPay: minDue({...d, emiNow:null, lastInterest:(+d.balance||0)*(+d.apr)/1200, bal:+d.balance||0},0), note:dueNote(d)}));
+  const debts = D.map(d=>({name:d.name, lender:d.lender||"", kind:d.kind, repay:d.repay, rate_type:d.rate_type||"fixed", benchmark:d.benchmark||"", currency:d.currency, apr:+d.apr, balance:+d.balance||0, paid:d.paid, interest:d.interest, firstPay: minDue({...d, emiNow:null, lastInterest:(+d.balance||0)*(+d.apr)/1200, bal:+d.balance||0},0), note:dueNote(d)}));
   return {ledger, lines, warnings, goals, debts, debtFree, efFull, start};
 }
 function disciplineScore(pl, ac){
@@ -305,6 +306,11 @@ const MARKET_SNAPSHOT = {
      source:{title:"SBI: NRE fixed deposit rates", url:"https://sbi.bank.in/web/interest-rates/interest-rates/sbi-nri-services-interest-rates/sbi-nri-services-nre-fixed-deposit-interest-rate"},
      tax:"Tax-free in India for NRIs. Taxable in the US if you're a US tax resident. Broken before 1 year, it earns no interest.", pfic:false}
   ],
+  benchmarks:[
+    {id:"rbi_repo", name:"RBI repo rate", value:5.25, as_of:"2026-10-05", note:"Unchanged for four reviews. Decision due Oct 7, 2026; economists expect a 0.25-point hike.",
+     source:{title:"Upstox: RBI MPC October 2026", url:"https://upstox.com/news/personal-finance/financial-regulations/rbi-mpc-october-2026-will-repo-rate-rise-25-bps-what-borrowers-and-fd-savers-should-know/article-201240/"}},
+    {id:"us_prime", name:"US Prime rate", value:7.00, as_of:"2026-09-16", note:"Raised 0.25 points on Sep 16, 2026. Fed funds target 3.75–4.00%; next Fed meeting Oct 28, 2026.",
+     source:{title:"FedPrimeRate.com: US Prime rate", url:"https://www.fedprimerate.com/"}}],
   tax_sources:[
     {title:"Taxes for Expats: US tax on Indian mutual funds (PFIC)", url:"https://www.taxesforexpats.com/articles/investments/us-tax-on-nri-mutual-funds-india.html"},
     {title:"Mintra Finserv: NRI mutual fund taxation 2026", url:"https://www.mintrafinserv.com/insights/wealth/nri-mutual-fund-taxation-india-2026"},
@@ -312,6 +318,8 @@ const MARKET_SNAPSHOT = {
 };
 let MARKET = MARKET_SNAPSHOT;
 const inst = id => MARKET.instruments.find(i=>i.id===id);
+const BENCHMARKS = ["RBI repo (EBLR)","MCLR","US Prime","SOFR","Other"];
+const benchOf = name => { const id = {"RBI repo (EBLR)":"rbi_repo","MCLR":"rbi_repo","US Prime":"us_prime"}[name]; return id ? (MARKET.benchmarks || MARKET_SNAPSHOT.benchmarks).find(b=>b.id===id) : null; };
 
 /* US tax status: F-1 students are usually nonresident aliens for their first 5 calendar years. */
 function taxPlan(p, deadlineYear){
@@ -359,6 +367,7 @@ function adviseGoal(g, p){
 
 /* =================== example data (shown until you start your own) =================== */
 const REPAY = [["emi","EMI (fixed monthly)"],["minimum","Minimum payment (card)"],["interest_only","Interest only, principal at end"],["moratorium","Moratorium, then EMI"],["bullet","Lump sum at end"],["flexible","Flexible / no fixed schedule"]];
+const RATE_DEFAULT = {"Home loan":"floating","Education loan":"floating","Loan against property":"floating","Business loan":"floating"};
 const REPAY_DEFAULT = {"Credit card":"minimum","Buy now, pay later":"emi","Gold loan":"bullet","Loan from family/friends":"flexible"};
 const GOAL_GROUPS = {
   "Home & property":["Buy a home","Down payment","Buy land","Build a house","Home renovation","Rental property"],
@@ -392,7 +401,7 @@ function exampleState(){ return { demo:true, checkins:[],
   debts:[
     {name:"US credit card", lender:"Chase", repay:"minimum", country:"US", currency:"USD", kind:"Credit card", balance:3200, apr:24.9, min_payment:100},
     {name:"Personal loan", lender:"HDFC Bank", repay:"emi", country:"India", currency:"INR", kind:"Personal loan", balance:250000, apr:14, min_payment:8000},
-    {name:"Education loan", country:"India", currency:"INR", kind:"Education loan", lender:"SBI", repay:"emi", balance:1800000, apr:9.5, min_payment:25000},
+    {name:"Education loan", country:"India", currency:"INR", kind:"Education loan", lender:"SBI", repay:"emi", rate_type:"floating", benchmark:"RBI repo (EBLR)", balance:1800000, apr:9.5, min_payment:25000},
     {name:"Loan from family", country:"India", currency:"INR", kind:"Loan from family/friends", lender:"Uncle", repay:"flexible", balance:100000, apr:0, min_payment:5000}],
   goals:[
     {name:"Vacation", type:"Vacation / travel", risk:"safe", country:"US", currency:"USD", target_amount:2500, target_date:ymAhead(1), priority:4, current_value:0},
@@ -408,7 +417,8 @@ function normalize(st){
   st.profile = {...DEFAULT_PROFILE, ...(st.profile||{})};
   st.debts ||= []; st.goals ||= []; st.checkins ||= [];
   for (const d of st.debts){ if (OLD_KINDS[d.kind]) d.kind = OLD_KINDS[d.kind]; if (!LOAN_TYPES.includes(d.kind)) d.kind = "Other";
-    d.repay ||= REPAY_DEFAULT[d.kind] || "emi"; d.lender ??= ""; d.pay_start ??= ""; d.ends ??= ""; }
+    d.repay ||= REPAY_DEFAULT[d.kind] || "emi"; d.lender ??= ""; d.pay_start ??= ""; d.ends ??= "";
+    d.rate_type ||= (RATE_DEFAULT[d.kind] || "fixed"); d.benchmark ??= (d.rate_type==="floating" ? (d.currency==="INR" ? "RBI repo (EBLR)" : "US Prime") : ""); }
   const nowYm = monthLabel(new Date(),0);
   for (const g of st.goals){ g.type ||= "Other"; g.risk ||= "glide"; g.started ||= nowYm; if (g.start_value==null) g.start_value = +g.current_value||0; g.history ||= []; }
   return st;
@@ -580,8 +590,9 @@ function timelineChart(P){
     <div class="legend"><span><i style="background:var(--good)"></i>Reached by target</span><span><i style="background:var(--warn)"></i>Reached late</span><span>│ target date</span></div></div>`;
 }
 
+let shock = 0;
 function planView(P){
-  const base = whatIf ? runPlan(S.profile, S.debts, S.goals, 0) : P;
+  const base = whatIf ? runPlan(S.profile, S.debts, S.goals, 0, shock) : P;
   const delta = (a,b) => !whatIf || a===b ? "" : `<div class="s">was ${niceMonth(b)}</div>`;
   const p = S.profile;
   return `
@@ -592,6 +603,11 @@ function planView(P){
     <div class="kpi"><h3>Emergency fund full</h3><div class="v">${niceMonth(P.efFull)}</div>${delta(P.efFull, base.efFull)}</div>
     <div class="kpi"><h3>Goals on track</h3><div class="v">${P.goals.filter(g=>g.status==="On track").length} / ${P.goals.length}</div>${whatIf?`<div class="s">was ${base.goals.filter(g=>g.status==="On track").length}</div>`:""}</div>
   </div>
+  ${S.debts.some(d=>d.rate_type==="floating") ? (()=>{ const noShock = runPlan(S.profile, S.debts, S.goals, whatIf, 0);
+    const intNow = P.debts.reduce((s,d)=>s+d.interest/(d.currency==="INR"?+S.profile.fx_usd_inr:1),0), int0 = noShock.debts.reduce((s,d)=>s+d.interest/(d.currency==="INR"?+S.profile.fx_usd_inr:1),0);
+    return `<div class="sheet" style="margin-top:12px"><div class="slider"><label for="shock"><b>What if floating rates change?</b> <span class="muted small">Applies to your floating-rate loans</span></label>
+    <span class="num" id="shockVal">${shock>0?"+":""}${shock.toFixed(2)} pts</span><input id="shock" type="range" min="-2" max="3" step="0.25" value="${shock}"></div>
+    ${shock ? `<p class="small" style="margin:8px 0 0">Debt-free <b>${niceMonth(P.debtFree)}</b> instead of ${niceMonth(noShock.debtFree)}. Total interest ${intNow>=int0?"up":"down"} by about <b class="num">${money(Math.abs(intNow-int0))}</b> (USD equivalent).</p>` : `<p class="small muted" style="margin:8px 0 0">Move the slider to see how a rate rise or cut changes your debt-free date and total interest.</p>`}</div>`; })() : ""}
   <h2>Goal timelines</h2><div class="sheet">${timelineChart(P) || `<p class="muted" style="margin:0">Add goals to see timelines.</p>`}</div>
   <h2>Debt payoff</h2>
   <div class="grid2"><div class="sheet">${debtChart(P) || `<p class="muted" style="margin:0">No debts. Everything goes to goals.</p>`}</div>
@@ -701,14 +717,15 @@ function advisorView(P){
   ${P.goals.length ? `<div class="cards">${cards}</div>` : `<p class="muted">Add goals on the Goals tab.</p>`}
   <h2>Sources</h2>
   <div class="sheet small"><p style="margin-top:0">Rates as of ${esc(MARKET.as_of)}${marketFromStore?" (refreshed weekly)":""}. Expected growth uses a conservative planning rate for each option, adjusted for the rupee when the money and the goal are in different currencies. Figures are before tax.</p>
-    <ul style="margin:0;padding-left:18px">${[...fx.sources, ...MARKET.instruments.map(i=>i.source), ...MARKET.tax_sources].filter((s,i,arr)=>arr.findIndex(o=>o.url===s.url)===i).map(s=>`<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a></li>`).join("")}</ul>
+    <ul style="margin:0;padding-left:18px">${[...fx.sources, ...MARKET.instruments.map(i=>i.source), ...(MARKET.benchmarks||MARKET_SNAPSHOT.benchmarks).map(b=>b.source), ...MARKET.tax_sources].filter((s,i,arr)=>arr.findIndex(o=>o.url===s.url)===i).map(s=>`<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a></li>`).join("")}</ul>
     <p class="muted" style="margin-bottom:0">This is planning information, not tax or investment advice. Tickers are examples, not recommendations. Confirm your tax status and account setup with a CPA who handles both US and India.</p></div>`;
 }
 function advisorContext(P){
   const p = S.profile;
   return {
     person:{income_usd:p.income_usd, income_inr:p.income_inr, us_tax_status: taxPlan(p, new Date().getFullYear()+10).label, f1_arrival_year:p.f1_arrival_year||"unknown", india_status:"NRI"},
-    fx: MARKET.fx, debt_free: P.debtFree,
+    fx: MARKET.fx, debt_free: P.debtFree, benchmarks: (MARKET.benchmarks||MARKET_SNAPSHOT.benchmarks).map(b=>({name:b.name, rate_pct:b.value, as_of:b.as_of, note:b.note, source:b.source.title})),
+    debts: P.debts.map(d=>({name:d.name, type:d.kind, currency:d.currency, rate_pct:d.apr, rate_type:d.rate_type, linked_to:d.benchmark, repayment:d.note, paid_off:d.paid})),
     goals: P.goals.map(g=>{ const a = adviseGoal(g,p); return {name:g.name, type:g.type, risk:g.risk, currency:g.currency, target_date:g.date, cost_at_date:Math.round(g.T), needs_per_month:Math.round(g.need),
       gets_this_month:Math.round(g.planned), status:g.status, equity_share_now:Math.round(a.e*100)+"%", equity_option:a.eqI.name, safe_option:a.safeI.name,
       expected_growth_pct:+a.blended.toFixed(1), steps:a.steps, flags:a.flags}; }),
@@ -739,7 +756,7 @@ QUESTION: ${question}`;
   }
 }
 
-const DEBT_COLS = [["name","Debt","text"],["lender","Lender / bank","text"],["kind","Loan type",LOAN_TYPES],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["balance","Balance left","number"],["apr","Interest %/yr","number"],["repay","Repayment",REPAY],["min_payment","EMI / payment per month","number"],["pay_start","Payments start","month"],["ends","Ends","month"]];
+const DEBT_COLS = [["name","Debt","text"],["lender","Lender / bank","text"],["kind","Loan type",LOAN_TYPES],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["balance","Balance left","number"],["apr","Interest %/yr","number"],["rate_type","Rate type",[["fixed","Fixed"],["floating","Floating"]]],["benchmark","Linked to (if floating)",[["","–"],...BENCHMARKS.map(b=>[b,b])]],["repay","Repayment",REPAY],["min_payment","EMI / payment per month","number"],["pay_start","Payments start","month"],["ends","Ends","month"]];
 const GOAL_COLS = [["name","Goal","text"],["type","Goal type",{groups:GOAL_GROUPS}],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["target_amount","Cost in today's money","number"],["target_date","Target date","month"],["priority","Priority (1 = top)",["1","2","3","4","5"]],["risk","Risk",RISK_OPTS],["current_value","Already saved","number"]];
 function editTable(kind, cols){
   const rows = S[kind];
@@ -765,9 +782,15 @@ function debtsView(){
       const e=Object.entries(by).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]); return e.length ? e.map(([k,v])=>`<div class="s" style="display:flex;justify-content:space-between;gap:8px;color:var(--ink)"><span>${esc(k)}</span><span class="num">${money(v)}</span></div>`).join("") : `<div class="s">No balances yet</div>`; })()}</div>
   <div class="kpi"><h3>Gets attacked first</h3><div class="s" style="font-size:.95rem;color:var(--ink)">${hi.length?esc(hi.join(", ")):"No high-interest debt"}</div><div class="s">${S.profile.high_interest_apr}%+ interest</div></div></div>
   ${(()=>{ const P = runPlan(S.profile, S.debts, S.goals, 0); if (!P.debts.length) return "";
-    return `<h2>Repayment check</h2><div class="sheet tbl"><table><thead><tr><th>Debt</th><th>Lender</th><th>Structure</th><th class="r">Due this month</th><th>Paid off</th></tr></thead><tbody>
-    ${P.debts.map(d=>`<tr><td><b>${esc(d.name)}</b> ${ccy(d.currency)}<div class="small muted">${esc(d.kind)}</div></td><td>${esc(d.lender)||"–"}</td><td class="small">${esc(d.note)}</td><td class="r num">${money(d.firstPay,d.currency)}</td><td class="num">${d.paid?niceMonth(d.paid):"Not within 40 yrs"}</td></tr>`).join("")}</tbody></table>
+    return `<h2>Repayment check</h2><div class="sheet tbl"><table><thead><tr><th>Debt</th><th>Lender</th><th>Interest</th><th>Structure</th><th class="r">Due this month</th><th>Paid off</th></tr></thead><tbody>
+    ${P.debts.map(d=>`<tr><td><b>${esc(d.name)}</b> ${ccy(d.currency)}<div class="small muted">${esc(d.kind)}</div></td><td>${esc(d.lender)||"–"}</td><td class="small"><span class="num">${d.apr.toFixed(2)}%</span> ${d.rate_type==="floating"?`<span class="pill warn">Floating</span>${d.benchmark?`<div class="muted">${esc(d.benchmark)}</div>`:""}`:`<span class="pill good">Fixed</span>`}</td><td class="small">${esc(d.note)}</td><td class="r num">${money(d.firstPay,d.currency)}</td><td class="num">${d.paid?niceMonth(d.paid):"Not within 40 yrs"}</td></tr>`).join("")}</tbody></table>
     <p class="small muted" style="margin:10px 0 0">Leave "EMI / payment per month" at 0 for an EMI loan with an end date and the standard EMI is worked out for you. During a moratorium, interest keeps adding to the balance until payments start.</p></div>`; })()}
+  ${(()=>{ const fl = S.debts.filter(d=>d.rate_type==="floating" && d.name); if (!fl.length) return "";
+    const bs = [...new Set(fl.map(d=>benchOf(d.benchmark)).filter(Boolean))];
+    return `<h2>Floating-rate loans</h2><div class="sheet"><p class="small" style="margin-top:0">${fl.length} loan${fl.length>1?"s":""} move${fl.length>1?"":"s"} with a benchmark rate. When the benchmark rises, your rate rises too. Lenders usually keep the EMI the same and stretch the tenure, so the loan takes longer to clear.</p>
+    ${bs.map(b=>`<div class="line"><span><span class="tag">Benchmark</span><b>${esc(b.name)}</b></span><span class="num">${(+b.value).toFixed(2)}%</span><small>${esc(b.note)} · Source: <a href="${esc(b.source.url)}" target="_blank" rel="noopener">${esc(b.source.title)}</a>, ${esc(b.as_of)}</small></div>`).join("")}
+    ${fl.some(d=>!benchOf(d.benchmark)) ? `<p class="small muted">MCLR moves with the repo rate after a delay. SOFR and other benchmarks aren't tracked here yet.</p>` : ""}
+    <div class="row" style="margin-top:8px"><button class="btn ghost small" data-goto="plan">Test a rate rise on the Plan tab</button></div></div>`; })()}
   <h2>Linking your loan accounts</h2>
   <div class="sheet small"><p style="margin-top:0">For safety, this app never asks for bank passwords or account numbers. Enter balances yourself and update them at each monthly check-in.</p>
     <p style="margin-bottom:0">For automatic US balances, connect a secure, read-only finance connector to Claude and ask Claude to update your numbers. Indian loans are usually linked through RBI's Account Aggregator system in an Indian app; then enter the balance here.</p></div>`;
@@ -831,7 +854,7 @@ function setupView(){
 function render(){
   document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===tab)));
   banner();
-  const P = runPlan(S.profile, S.debts, S.goals, tab==="plan" ? whatIf : 0);
+  const P = runPlan(S.profile, S.debts, S.goals, tab==="plan" ? whatIf : 0, tab==="plan" ? shock : 0);
   const v = $("#view");
   v.innerHTML = tab==="home" ? homeView(P) : tab==="progress" ? progressView(P) : tab==="advisor" ? advisorView(P) : tab==="plan" ? planView(P) : tab==="debts" ? debtsView() : tab==="goals" ? goalsView() : tab==="checkin" ? checkinView(P) : setupView();
   const greet = S.profile.name && !S.demo ? ` for ${S.profile.name.split(" ")[0]}` : "";
@@ -853,7 +876,7 @@ document.addEventListener("click", e => {
   if (t.dataset.ask!=null){ const P = runPlan(S.profile, S.debts, S.goals, 0), g = P.goals[+t.dataset.ask];
     if (g) askAdvisor(`Explain the plan for my "${g.name}" goal: where the money should go, how it's expected to grow, and what to watch out for.`, `ans-${t.dataset.ask}`, t.dataset.ask); return; }
   if (t.dataset.add){ const k=t.dataset.add; update(()=>S[k].push(k==="debts"
-      ? {name:"", lender:"", country:"US", currency:"USD", kind:"Credit card", repay:"minimum", balance:0, apr:0, min_payment:0, pay_start:"", ends:""}
+      ? {name:"", lender:"", country:"US", currency:"USD", kind:"Credit card", repay:"minimum", rate_type:"fixed", benchmark:"", balance:0, apr:0, min_payment:0, pay_start:"", ends:""}
       : {name:"", type:"Other", risk:"glide", country:"US", currency:"USD", target_amount:0, target_date:ymAhead(3), priority:3, current_value:0, started:monthLabel(new Date(),0), start_value:0, history:[]}));
     const inp = document.querySelector(`#${k}-${S[k].length-1}-name`); inp && inp.focus(); return; }
   if (t.dataset.del){ update(()=>S[t.dataset.del].splice(+t.dataset.i,1)); return; }
@@ -864,16 +887,19 @@ document.addEventListener("change", e => {
   if (el.id==="goalTpl" && el.value){ const ty = el.value, [yrs, ctry, risk] = GOAL_DEFAULTS[ty] || [3,"US","glide"];
     update(()=>S.goals.push({name:ty, type:ty, risk, country:ctry, currency:ctry==="India"?"INR":"USD", target_amount:0, target_date:ymAhead(yrs), priority:3, current_value:0, started:monthLabel(new Date(),0), start_value:0, history:[]}));
     const inp = document.querySelector(`#goals-${S.goals.length-1}-target_amount`); inp && inp.focus(); return; }
+  if (el.id==="shock"){ shock = +el.value; render(); const w=$("#shock"); w && w.focus(); return; }
   if (el.id==="whatif"){ whatIf = +el.value; render(); const w=$("#whatif"); w && w.focus(); return; }
   if (el.dataset.k){ const {k,i,f} = el.dataset; let v = el.value;
     if (el.type==="number" || ["priority"].includes(f)) v = el.value==="" ? 0 : +el.value;
     update(()=>{ const r = S[k][+i]; r[f] = v; if (f==="country") r.currency = v==="India" ? "INR" : "USD";
-      if (k==="debts" && f==="kind") r.repay = REPAY_DEFAULT[v] || "emi";
+      if (k==="debts" && f==="kind"){ r.repay = REPAY_DEFAULT[v] || "emi"; r.rate_type = RATE_DEFAULT[v] || "fixed"; r.benchmark = r.rate_type==="floating" ? (r.currency==="INR" ? "RBI repo (EBLR)" : "US Prime") : ""; }
+      if (k==="debts" && f==="rate_type"){ r.benchmark = v==="floating" ? (r.benchmark || (r.currency==="INR" ? "RBI repo (EBLR)" : "US Prime")) : ""; }
       if (k==="goals" && f==="current_value" && !(r.history||[]).length && r.started===monthLabel(new Date(),0)) r.start_value = v; }); return; }
   if (el.dataset.p){ const f=el.dataset.p; update(()=>{ S.profile[f] = (el.type==="number") ? (el.value===""?0:+el.value) : el.value; }); }
 });
 document.addEventListener("input", e => {
   if (e.target.id==="whatif"){ $("#whatifVal").textContent = "+" + money(+e.target.value); }
+  if (e.target.id==="shock"){ const v=+e.target.value; $("#shockVal").textContent = (v>0?"+":"") + v.toFixed(2) + " pts"; }
 });
 document.addEventListener("submit", e => {
   if (e.target.id==="askForm"){ e.preventDefault(); const q = $("#askQ").value.trim(); if (q) askAdvisor(q, "ans-free", "free"); return; }
