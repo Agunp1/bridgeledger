@@ -438,13 +438,14 @@ async function initStore(){
         const snap = await store.ref.get();
         const data = snap.exists ? snap.data() : null;
         if (data && data.state){ S = normalize(JSON.parse(data.state)); render(); }
-        setSave("Saved privately to your account");
+        else { try { const raw = localStorage.getItem("bridgeledger"); if (raw){ S = normalize(JSON.parse(raw)); render(); } } catch(_){} }
+        setSave("Saved privately to your Claude account");
         return;
       }
     }
   } catch(e){ /* fall through to browser storage */ }
   try { const raw = localStorage.getItem("bridgeledger"); if (raw){ S = normalize(JSON.parse(raw)); render(); } store = {kind:"local"};
-    setSave("Saved in this browser only"); } catch(e){ store = {kind:"none"}; setSave("Not saved: storage unavailable"); }
+    setSave("Saved on this device only (private to you)"); } catch(e){ store = {kind:"none"}; setSave("Not saved: storage unavailable"); }
 }
 function persist(){
   if (S.demo) return;
@@ -452,11 +453,14 @@ function persist(){
   saveTimer = setTimeout(async () => {
     const payload = JSON.stringify(S);
     try {
-      if (store.kind==="db"){ await store.ref.set({state:payload, updated:Date.now()}); setSave("Saved privately to your account"); }
-      else if (store.kind==="local"){ localStorage.setItem("bridgeledger", payload); setSave("Saved in this browser only"); }
+      if (store.kind==="db"){ await store.ref.set({state:payload, updated:Date.now()}); setSave("Saved privately to your Claude account"); }
+      else if (store.kind==="local"){ localStorage.setItem("bridgeledger", payload); setSave("Saved on this device only (private to you)"); }
       else setSave("Not saved: storage unavailable");
     } catch(e){
-      if (e && e.code==="invalid_argument"){ canWrite=false; setSave("You can view but not save here. Ask the owner for Contributor access."); }
+      if (e && e.code==="invalid_argument"){
+        // This viewer can't save to their account here (view-only share): keep their plan on this device instead.
+        try { localStorage.setItem("bridgeledger", payload); store = {kind:"local"}; setSave("Saved on this device only (private to you)"); }
+        catch(_){ canWrite=false; setSave("Can't save here. Ask the person who shared this to give you edit access."); } }
       else setSave("Couldn't save. Your changes are kept on this page; try again in a moment.");
     }
   }, 700);
