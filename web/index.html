@@ -150,11 +150,13 @@ const VEH = { USD:{equity:"index fund / ETF", safe:"HYSA, T-bills"}, INR:{equity
 const STARTER_CAP = .5, FULL_CAP = .3, MAX_MONTHS = 480;
 
 const eqShare = m => { const y = Math.max(m,0)/12; for (const [my,s] of GLIDE) if (y >= my) return s; return 0; };
-const mret = (c,m) => { const r = RET[c]||RET.USD, e = eqShare(m); return Math.pow(1+(e*r.equity+(1-e)*r.safe)/100, 1/12)-1; };
+const RISK = {glide:1, cautious:.5, safe:0};
+const annuity = (P, apr, n) => { const r = apr/1200; if (n<=0) return P; return r===0 ? P/n : P*r/(1-Math.pow(1+r,-n)); };
+const mret = (c,m,rf=1) => { const r = RET[c]||RET.USD, e = eqShare(m)*rf; return Math.pow(1+(e*r.equity+(1-e)*r.safe)/100, 1/12)-1; };
 const horizonLabel = m => m/12 < 2 ? "Short term" : m/12 < 5 ? "Medium term" : "Long term";
-function reqMonthly(v, T, n, c){
+function reqMonthly(v, T, n, c, rf=1){
   if (v >= T) return 0; if (n <= 0) return T - v;
-  const fv = p => { let x = v; for (let k=0;k<n;k++) x = x*(1+mret(c,n-k)) + p; return x; };
+  const fv = p => { let x = v; for (let k=0;k<n;k++) x = x*(1+mret(c,n-k,rf)) + p; return x; };
   const b = fv(0), s = fv(1) - b; return Math.max(0, (T-b)/s);
 }
 function monthLabel(start, off){ const t = start.getFullYear()*12 + start.getMonth() + off; return `${Math.floor(t/12)}-${String(t%12+1).padStart(2,"0")}`; }
@@ -177,12 +179,25 @@ function runPlan(p, debtsIn, goalsIn, extra=0){
   const fx0 = +p.fx_usd_inr, drift = +p.fx_drift_pct/100, strategy = p.debt_strategy;
   const hi = +p.high_interest_apr, lo = +p.low_interest_apr, gshare = +p.min_goal_share_pct/100;
   const warnings = [];
-  const D = debtsIn.filter(d=>d.name).map(d=>({...d, bal:+d.balance||0, interest:0, paid:(+d.balance||0)>0.005?null:"clear"}));
+  const D = debtsIn.filter(d=>d.name).map(d=>{ const bal = +d.balance||0, repay = d.repay || "emi";
+    const endOff = /^\d{4}-\d{2}$/.test(d.ends||"") ? monthsBetween(start, d.ends) : null;
+    const startOff = /^\d{4}-\d{2}$/.test(d.pay_start||"") ? Math.max(0, monthsBetween(start, d.pay_start)) : 0;
+    const emi0 = +d.min_payment || (repay==="emi" && endOff!=null && endOff>=0 ? annuity(bal, +d.apr, endOff+1) : 0);
+    return {...d, repay, bal, endOff, startOff, emi0, emiNow:null, lastInterest:0, interest:0, paid: bal>0.005?null:"clear"}; });
+  const minDue = (d,t) => {
+    if (d.repay==="moratorium"){ if (t < d.startOff) return 0;
+      if (d.emiNow==null) d.emiNow = +d.min_payment || (d.endOff!=null && d.endOff>=t ? annuity(d.bal, +d.apr, d.endOff-t+1) : 0); return d.emiNow; }
+    if (d.repay==="interest_only") return (d.endOff!=null && t>=d.endOff) ? d.bal : d.lastInterest;
+    if (d.repay==="bullet") return (d.endOff!=null && t>=d.endOff) ? d.bal : 0;
+    return d.emi0; };
+  const dueNote = d => d.repay==="moratorium" ? `payments start ${niceMonth(d.pay_start)}` : d.repay==="interest_only" ? `interest only until ${niceMonth(d.ends)}`
+    : d.repay==="bullet" ? `lump sum due ${niceMonth(d.ends)}` : d.repay==="minimum" ? "minimum payment" : d.repay==="flexible" ? "flexible" : (d.endOff!=null ? `EMI until ${niceMonth(d.ends)}` : "EMI");
   const G = goalsIn.filter(g=>g.name && /^\d{4}-\d{2}$/.test(g.target_date)).map(g=>{
     const infl = g.currency==="INR" ? +p.inflation_inr_pct : +p.inflation_usd_pct, dl = monthsBetween(start, g.target_date);
     const T = (+g.target_amount||0) * Math.pow(1+infl/100, Math.max(dl,0)/12), v = +g.current_value||0;
     if (dl < 0) warnings.push(`"${g.name}" has a target date in the past. Update it on the Goals tab.`);
-    return {...g, deadline:dl, T, value:v, done: v>=T ? monthLabel(start,0) : null, need:reqMonthly(v,T,dl,g.currency), planned:0};
+    const rf = RISK[g.risk] ?? 1;
+    return {...g, rf, deadline:dl, T, value:v, done: v>=T ? monthLabel(start,0) : null, need:reqMonthly(v,T,dl,g.currency,rf), planned:0};
   }).sort((a,b)=>(+a.priority)-(+b.priority) || a.deadline-b.deadline);
   let ef = +p.emergency_balance_usd||0; const efRate = Math.pow(1+RET.USD.safe/100,1/12)-1;
   const lastGoal = Math.max(0, ...G.map(g=>g.deadline));
@@ -197,8 +212,8 @@ function runPlan(p, debtsIn, goalsIn, extra=0){
     const w = new Wallet(incUsd, incInr, fx, +p.remit_fee_pct);
     const row = {month:label, essentials:0, lifestyle:0, dmin:0, dextra:0, emergency:0, goals:0, unallocated:0};
     const L = t===0 ? (x)=>lines.push(x) : ()=>{};
-    for (const d of D) if (d.bal>0.005){ const i=d.bal*(+d.apr)/1200; d.bal+=i; d.interest+=i; }
-    for (const g of G) if (!g.done) g.value *= 1+mret(g.currency, g.deadline-t);
+    for (const d of D) if (d.bal>0.005){ const i=d.bal*(+d.apr)/1200; d.bal+=i; d.interest+=i; d.lastInterest=i; }
+    for (const g of G) if (!g.done) g.value *= 1+mret(g.currency, g.deadline-t, g.rf);
     ef *= 1+efRate;
     const ess = (+p.essentials_usd||0) + (+p.essentials_inr||0)/fx;
     row.essentials += w.pay(+p.essentials_usd||0,"USD") + w.pay(+p.essentials_inr||0,"INR");
@@ -206,10 +221,11 @@ function runPlan(p, debtsIn, goalsIn, extra=0){
     row.lifestyle = w.pay(life,"USD");
     L({bucket:"Lifestyle", item:"Guilt-free spending", amount:life, currency:"USD", note:"Planned, so spend it without guilt"});
     for (const d of D.filter(d=>d.bal>0.005)){
-      let a = Math.min(+d.min_payment||0, d.bal);
-      if (w.cost(a,d.currency) > w.total()+1e-9){ a = w.maxPay(w.total(), d.currency); if (t===0) warnings.push(`Not enough money for the minimum payment on "${d.name}".`); }
+      let a = Math.min(minDue(d,t), d.bal);
+      if (w.cost(a,d.currency) > w.total()+1e-9){ a = w.maxPay(w.total(), d.currency);
+        if (!d.warnedShort){ d.warnedShort = true; warnings.push(t===0 ? `Not enough money for the required payment on "${d.name}" this month.` : `"${d.name}" needs ${money(minDue(d,t),d.currency)} in ${niceMonth(label)} and the plan can't cover it in full. Start setting money aside early.`); } }
       row.dmin += w.pay(a,d.currency); d.bal -= a;
-      L({bucket:"Debt minimum", item:d.name, amount:a, currency:d.currency, note:`${(+d.apr).toFixed(1)}% interest`});
+      L({bucket:"Debt payment", item:d.name, amount:a, currency:d.currency, note:`${(+d.apr).toFixed(1)}% interest · ${dueNote(d)}`});
     }
     const payExtra = (cands, budget) => { let s=0;
       for (const d of order(cands.filter(d=>d.bal>0.005), fx)){ if (budget-s<=0.005) break;
@@ -223,10 +239,10 @@ function runPlan(p, debtsIn, goalsIn, extra=0){
     R = w.total(); const high = D.filter(d=>d.bal>0.005 && +d.apr>=hi);
     if (high.length && R>0) row.dextra += payExtra(high, R*(1-gshare));
     else { const fgap = (+p.emergency_months)*ess - ef; if (fgap>0 && R>0) row.emergency += fundEf(Math.min(fgap, FULL_CAP*R)); }
-    for (const g of G){ if (g.done) continue; const ml = g.deadline - t, req = reqMonthly(g.value, g.T, ml, g.currency);
+    for (const g of G){ if (g.done) continue; const ml = g.deadline - t, req = reqMonthly(g.value, g.T, ml, g.currency, g.rf);
       if (req<=0) continue; const a = Math.min(req, w.maxPay(w.total(), g.currency));
       row.goals += w.pay(a,g.currency); g.value += a;
-      if (t===0){ g.planned = a; const e = eqShare(ml), v = VEH[g.currency]||VEH.USD;
+      if (t===0){ g.planned = a; const e = eqShare(ml)*g.rf, v = VEH[g.currency]||VEH.USD;
         L({bucket:"Goal SIP", item:g.name, amount:a, currency:g.currency, need:req,
            note:`${Math.round(e*100)}% ${v.equity} · ${Math.round((1-e)*100)}% ${v.safe}`}); } }
     R = w.total(); const mod = D.filter(d=>d.bal>0.005 && +d.apr>=lo);
@@ -250,10 +266,11 @@ function runPlan(p, debtsIn, goalsIn, extra=0){
   const goals = G.map(g=>{ let status, late=0;
     if (g.done){ late = monthsBetween(start, g.done) - g.deadline; status = late<=0 ? "On track" : `Late by ${late} mo`; }
     else status = "Not reached";
-    return {name:g.name, currency:g.currency, priority:+g.priority, date:g.target_date, today:+g.target_amount, T:g.T,
+    return {name:g.name, type:g.type||"Other", risk:g.risk||"glide", rf:g.rf, currency:g.currency, priority:+g.priority, date:g.target_date, today:+g.target_amount, T:g.T,
             saved:+g.current_value||0, need:g.need, planned:g.planned, done:g.done, status, late, deadline:g.deadline,
-            mix:Math.round(eqShare(g.deadline)*100), horizon:horizonLabel(g.deadline)}; });
-  const debts = D.map(d=>({name:d.name, currency:d.currency, apr:+d.apr, balance:+d.balance||0, paid:d.paid, interest:d.interest}));
+            mix:Math.round(eqShare(g.deadline)*g.rf*100), horizon:horizonLabel(g.deadline)}; });
+  for (const d of D) if (!d.paid && !D.some(x=>x===d && x.warnedShort)) warnings.push(`"${d.name}" won't be paid off within 40 years with its current payment. Add a monthly payment or an end date on the Debts tab.`);
+  const debts = D.map(d=>({name:d.name, lender:d.lender||"", kind:d.kind, repay:d.repay, currency:d.currency, apr:+d.apr, balance:+d.balance||0, paid:d.paid, interest:d.interest, firstPay: minDue({...d, emiNow:null, lastInterest:(+d.balance||0)*(+d.apr)/1200, bal:+d.balance||0},0), note:dueNote(d)}));
   return {ledger, lines, warnings, goals, debts, debtFree, efFull, start};
 }
 function disciplineScore(pl, ac){
@@ -314,7 +331,7 @@ function rateInGoalCcy(i, goalCcy, drift){
   return i.plan_rate;
 }
 function adviseGoal(g, p){
-  const m = Math.max(g.deadline,0), e = eqShare(m), dlYear = +String(g.date).slice(0,4), tp = taxPlan(p, dlYear);
+  const m = Math.max(g.deadline,0), rf = g.rf ?? 1, e = eqShare(m)*rf, dlYear = +String(g.date).slice(0,4), tp = taxPlan(p, dlYear);
   const drift = +p.fx_drift_pct || 0, inINR = g.currency==="INR";
   const eqI = inINR ? (tp.residentDuring ? inst("us_india_etf") : inst("in_index")) : inst("us_index");
   const safeI = inINR ? inst("in_nre_fd") : (m > 6 ? inst("us_tbill") : inst("us_hysa"));
@@ -323,11 +340,11 @@ function adviseGoal(g, p){
   const steps = [], flags = [];
   const monthly = g.need;
   if (e>0) steps.push(`Each month, put ${Math.round(e*100)}% of this goal's SIP into ${eqI.name} and ${Math.round((1-e)*100)}% into ${safeI.name}. Where: ${eqI.where}; ${safeI.where}.`);
-  else steps.push(`Keep this goal's money in ${safeI.name} (${safeI.where}). It's too close to the date for stocks.`);
+  else steps.push(`Keep this goal's money in ${safeI.name} (${safeI.where}). ${rf===0 ? "You chose to keep this goal safe, so no stocks." : "It's too close to the date for stocks."}`);
   const next = GLIDE.find(([y])=> m/12 >= y && y>0);
   if (next && e>0){ const idx = GLIDE.findIndex(x=>x===next), lower = GLIDE[idx+1];
     const monthsToStep = Math.max(1, m - next[0]*12 + 1);
-    if (lower) steps.push(`In ${niceMonth(monthLabel(new Date(),monthsToStep))} (${monthsToStep} month${monthsToStep===1?"":"s"} from now), shift to ${Math.round(lower[1]*100)}% equity by moving part of the equity into the safe option.`); }
+    if (lower) steps.push(`In ${niceMonth(monthLabel(new Date(),monthsToStep))} (${monthsToStep} month${monthsToStep===1?"":"s"} from now), shift to ${Math.round(lower[1]*rf*100)}% equity by moving part of the equity into the safe option.`); }
   if (inINR && eqI.currency==="USD"){
     const startMove = Math.max(0, m-24);
     steps.push(`From ${niceMonth(monthLabel(new Date(), startMove))}, move money to India in equal monthly amounts into an NRE FD, so the full amount is in rupees by ${niceMonth(g.date)}. Spreading it out avoids converting everything at one bad exchange rate.`);
@@ -341,6 +358,28 @@ function adviseGoal(g, p){
 }
 
 /* =================== example data (shown until you start your own) =================== */
+const REPAY = [["emi","EMI (fixed monthly)"],["minimum","Minimum payment (card)"],["interest_only","Interest only, principal at end"],["moratorium","Moratorium, then EMI"],["bullet","Lump sum at end"],["flexible","Flexible / no fixed schedule"]];
+const REPAY_DEFAULT = {"Credit card":"minimum","Buy now, pay later":"emi","Gold loan":"bullet","Loan from family/friends":"flexible"};
+const GOAL_GROUPS = {
+  "Home & property":["Buy a home","Down payment","Buy land","Build a house","Home renovation","Rental property"],
+  "Family":["Wedding","Child's education","Having a baby","Support parents","Parents' medical care","Family event / festival"],
+  "Education & career":["Higher education (MBA, MS)","Professional certification","Career break / sabbatical","Relocation / visa costs"],
+  "Business & investing":["Start a business","Invest in a startup","Side business","Passive income target"],
+  "Lifestyle":["Vacation / travel","Car","Two-wheeler","Gadgets / electronics","Hobby / sports gear"],
+  "Security":["Emergency reserve (extra)","Medical fund","Insurance premium fund"],
+  "Long term":["Retirement","Financial independence (FIRE)","Children's future fund"],
+  "Giving":["Charity / donations","Community / temple contribution"],
+  "Other":["Other"]};
+const GOAL_TYPES = Object.values(GOAL_GROUPS).flat();
+const GOAL_DEFAULTS = {"Buy a home":[7,"US","glide"],"Down payment":[5,"US","glide"],"Buy land":[5,"India","glide"],"Build a house":[7,"India","glide"],"Home renovation":[2,"India","cautious"],"Rental property":[8,"India","glide"],
+  "Wedding":[3,"India","cautious"],"Child's education":[15,"US","glide"],"Having a baby":[2,"US","safe"],"Support parents":[1,"India","safe"],"Parents' medical care":[1,"India","safe"],"Family event / festival":[1,"India","safe"],
+  "Higher education (MBA, MS)":[3,"US","cautious"],"Professional certification":[1,"US","safe"],"Career break / sabbatical":[3,"US","cautious"],"Relocation / visa costs":[2,"US","safe"],
+  "Start a business":[4,"US","cautious"],"Invest in a startup":[3,"US","cautious"],"Side business":[2,"US","cautious"],"Passive income target":[10,"US","glide"],
+  "Vacation / travel":[1,"US","safe"],"Car":[3,"US","cautious"],"Two-wheeler":[1,"India","safe"],"Gadgets / electronics":[1,"US","safe"],"Hobby / sports gear":[1,"US","safe"],
+  "Emergency reserve (extra)":[1,"US","safe"],"Medical fund":[2,"US","safe"],"Insurance premium fund":[1,"US","safe"],
+  "Retirement":[30,"US","glide"],"Financial independence (FIRE)":[15,"US","glide"],"Children's future fund":[18,"US","glide"],
+  "Charity / donations":[1,"US","safe"],"Community / temple contribution":[1,"India","safe"],"Other":[3,"US","glide"]};
+const RISK_OPTS = [["glide","Standard (glide path)"],["cautious","Cautious (half the stocks)"],["safe","Keep it safe (no stocks)"]];
 const LOAN_TYPES = ["Credit card","Personal loan","Education loan","Home loan","Car loan","Two-wheeler loan","Gold loan","Loan against property","Business loan","Buy now, pay later","Medical loan","Loan from family/friends","Other"];
 const OLD_KINDS = {"Short-term":"Personal loan","short_term":"Personal loan","Education":"Education loan","education":"Education loan","Informal":"Loan from family/friends","informal":"Loan from family/friends","other":"Other"};
 function ymAhead(y){ const n=new Date(), t=n.getFullYear()*12+n.getMonth()+Math.round(y*12); return `${Math.floor(t/12)}-${String(t%12+1).padStart(2,"0")}`; }
@@ -351,16 +390,16 @@ const DEFAULT_PROFILE = {name:"", income_usd:0, income_inr:0, essentials_usd:0, 
 function exampleState(){ return { demo:true, checkins:[],
   profile:{...DEFAULT_PROFILE, name:"Example student", income_usd:5200, essentials_usd:2300, essentials_inr:15000, emergency_balance_usd:1500},
   debts:[
-    {name:"US credit card", country:"US", currency:"USD", kind:"Credit card", balance:3200, apr:24.9, min_payment:100},
-    {name:"Personal loan", country:"India", currency:"INR", kind:"Personal loan", balance:250000, apr:14, min_payment:8000},
-    {name:"Education loan", country:"India", currency:"INR", kind:"Education loan", balance:1800000, apr:9.5, min_payment:25000},
-    {name:"Loan from family", country:"India", currency:"INR", kind:"Loan from family/friends", balance:100000, apr:0, min_payment:5000}],
+    {name:"US credit card", lender:"Chase", repay:"minimum", country:"US", currency:"USD", kind:"Credit card", balance:3200, apr:24.9, min_payment:100},
+    {name:"Personal loan", lender:"HDFC Bank", repay:"emi", country:"India", currency:"INR", kind:"Personal loan", balance:250000, apr:14, min_payment:8000},
+    {name:"Education loan", country:"India", currency:"INR", kind:"Education loan", lender:"SBI", repay:"emi", balance:1800000, apr:9.5, min_payment:25000},
+    {name:"Loan from family", country:"India", currency:"INR", kind:"Loan from family/friends", lender:"Uncle", repay:"flexible", balance:100000, apr:0, min_payment:5000}],
   goals:[
-    {name:"Vacation", country:"US", currency:"USD", target_amount:2500, target_date:ymAhead(1), priority:4, current_value:0},
-    {name:"Wedding", country:"India", currency:"INR", target_amount:1500000, target_date:ymAhead(3), priority:2, current_value:0},
-    {name:"Land in India", country:"India", currency:"INR", target_amount:3000000, target_date:ymAhead(5), priority:1, current_value:0},
-    {name:"Build rental house", country:"India", currency:"INR", target_amount:4000000, target_date:ymAhead(9), priority:3, current_value:0},
-    {name:"US house down payment", country:"US", currency:"USD", target_amount:60000, target_date:ymAhead(8), priority:3, current_value:0}]}; }
+    {name:"Vacation", type:"Vacation / travel", risk:"safe", country:"US", currency:"USD", target_amount:2500, target_date:ymAhead(1), priority:4, current_value:0},
+    {name:"Wedding", type:"Wedding", risk:"cautious", country:"India", currency:"INR", target_amount:1500000, target_date:ymAhead(3), priority:2, current_value:0},
+    {name:"Land in India", type:"Buy land", risk:"glide", country:"India", currency:"INR", target_amount:3000000, target_date:ymAhead(5), priority:1, current_value:0},
+    {name:"Build rental house", type:"Rental property", risk:"glide", country:"India", currency:"INR", target_amount:4000000, target_date:ymAhead(9), priority:3, current_value:0},
+    {name:"US house down payment", type:"Down payment", risk:"glide", country:"US", currency:"USD", target_amount:60000, target_date:ymAhead(8), priority:3, current_value:0}]}; }
 function blankState(){ return {demo:false, profile:{...DEFAULT_PROFILE}, debts:[], goals:[], checkins:[]}; }
 
 /* =================== storage: private per person =================== */
@@ -368,9 +407,10 @@ let S = normalize(exampleState()), store = {kind:"none"}, saveTimer = null, canW
 function normalize(st){
   st.profile = {...DEFAULT_PROFILE, ...(st.profile||{})};
   st.debts ||= []; st.goals ||= []; st.checkins ||= [];
-  for (const d of st.debts){ if (OLD_KINDS[d.kind]) d.kind = OLD_KINDS[d.kind]; if (!LOAN_TYPES.includes(d.kind)) d.kind = "Other"; }
+  for (const d of st.debts){ if (OLD_KINDS[d.kind]) d.kind = OLD_KINDS[d.kind]; if (!LOAN_TYPES.includes(d.kind)) d.kind = "Other";
+    d.repay ||= REPAY_DEFAULT[d.kind] || "emi"; d.lender ??= ""; d.pay_start ??= ""; d.ends ??= ""; }
   const nowYm = monthLabel(new Date(),0);
-  for (const g of st.goals){ g.started ||= nowYm; if (g.start_value==null) g.start_value = +g.current_value||0; g.history ||= []; }
+  for (const g of st.goals){ g.type ||= "Other"; g.risk ||= "glide"; g.started ||= nowYm; if (g.start_value==null) g.start_value = +g.current_value||0; g.history ||= []; }
   return st;
 }
 const $ = s => document.querySelector(s);
@@ -583,9 +623,9 @@ function goalPace(g, sg, p){
   const total = sg.deadline - startOff;                        // months from start to date
   const elapsed = -startOff;
   const T = sg.T, v0 = +g.start_value||0, ccyG = g.currency;
-  const pmt = reqMonthly(v0, T, total, ccyG);
+  const rf = sg.rf ?? 1, pmt = reqMonthly(v0, T, total, ccyG, rf);
   const path = []; let v = v0;
-  for (let k=0; k<=Math.max(total,0); k++){ path.push(v); if (k<total) v = v*(1+mret(ccyG,total-k)) + pmt; }
+  for (let k=0; k<=Math.max(total,0); k++){ path.push(v); if (k<total) v = v*(1+mret(ccyG,total-k,rf)) + pmt; }
   const expected = path[Math.min(Math.max(elapsed,0), path.length-1)] ?? v0;
   const saved = +g.current_value||0;
   return {path, expected, saved, T, pct: T>0 ? Math.min(saved/T,1) : 0, expPct: T>0 ? Math.min(expected/T,1) : 0, startOff, total, elapsed};
@@ -619,7 +659,7 @@ function progressView(P){
   </div>
   <h2>Goals</h2>
   <div class="cards">${rows.map(({g,sg,pc})=>{ const diff = pc.saved - pc.expected, ahead = diff >= -0.5;
-    return `<article class="gcard"><header><h4>${esc(g.name)} ${ccy(g.currency)}</h4><span>${statusPill(sg.status)}</span></header>
+    return `<article class="gcard"><header><h4>${esc(g.name)} ${ccy(g.currency)}</h4><span>${statusPill(sg.status)}</span></header><div class="small muted" style="margin-top:-6px">${esc(sg.type)}</div>
       <div class="meter" title="Saved vs target. The dark tick is where you should be today."><i style="width:${(pc.pct*100).toFixed(1)}%;background:${ahead?"var(--good)":"var(--warn)"}"></i><b style="left:calc(${(pc.expPct*100).toFixed(1)}% - 1px)"></b></div>
       <div class="facts"><div>Saved<strong>${money(pc.saved,g.currency)}</strong></div><div>Target<strong>${money(pc.T,g.currency)}</strong></div><div>Complete<strong>${(pc.pct*100).toFixed(1)}%</strong></div>
         <div>Should have now<strong>${money(pc.expected,g.currency)}</strong></div><div>${ahead?"Ahead by":"Behind by"}<strong>${money(Math.abs(diff),g.currency)}</strong></div><div>Due<strong>${niceMonth(g.target_date)}</strong></div></div>
@@ -639,7 +679,7 @@ function advisorView(P){
   const p = S.profile, fx = MARKET.fx;
   const tpNow = taxPlan(p, new Date().getFullYear()+10);
   const cards = P.goals.map((sg,idx)=>{ const a = adviseGoal(sg, p);
-    return `<article class="gcard"><header><h4>${esc(sg.name)} ${ccy(sg.currency)}</h4><span class="small muted">${niceMonth(sg.date)} · ${esc(sg.horizon)}</span></header>
+    return `<article class="gcard"><header><h4>${esc(sg.name)} ${ccy(sg.currency)}</h4><span class="small muted">${esc(sg.type)} · ${niceMonth(sg.date)} · ${esc(sg.horizon)}${sg.risk!=="glide"?` · ${sg.risk==="safe"?"kept safe":"cautious"}`:""}</span></header>
       <div class="facts"><div>Needs a month<strong>${money(sg.need,sg.currency)}</strong></div><div>Expected growth<strong>~${a.blended.toFixed(1)}%/yr</strong></div><div>Mix today<strong>${Math.round(a.e*100)}% equity</strong></div></div>
       <div class="alloc" aria-hidden="true"><i style="width:${a.e*100}%;background:var(--good)"></i><i style="width:${(1-a.e)*100}%;background:var(--usd)"></i></div>
       ${a.e>0 ? instBlock(a.eqI, a.e, a.rEq, sg.currency) : ""}${instBlock(a.safeI, 1-a.e, a.rSafe, sg.currency)}
@@ -669,7 +709,7 @@ function advisorContext(P){
   return {
     person:{income_usd:p.income_usd, income_inr:p.income_inr, us_tax_status: taxPlan(p, new Date().getFullYear()+10).label, f1_arrival_year:p.f1_arrival_year||"unknown", india_status:"NRI"},
     fx: MARKET.fx, debt_free: P.debtFree,
-    goals: P.goals.map(g=>{ const a = adviseGoal(g,p); return {name:g.name, currency:g.currency, target_date:g.date, cost_at_date:Math.round(g.T), needs_per_month:Math.round(g.need),
+    goals: P.goals.map(g=>{ const a = adviseGoal(g,p); return {name:g.name, type:g.type, risk:g.risk, currency:g.currency, target_date:g.date, cost_at_date:Math.round(g.T), needs_per_month:Math.round(g.need),
       gets_this_month:Math.round(g.planned), status:g.status, equity_share_now:Math.round(a.e*100)+"%", equity_option:a.eqI.name, safe_option:a.safeI.name,
       expected_growth_pct:+a.blended.toFixed(1), steps:a.steps, flags:a.flags}; }),
     instruments: MARKET.instruments.map(i=>({name:i.name, where:i.where, currency:i.currency, figure:`${i.metric}: ${i.value}`, planning_rate_pct:i.plan_rate, tax:i.tax, source:i.source.title, as_of:i.as_of}))
@@ -699,17 +739,21 @@ QUESTION: ${question}`;
   }
 }
 
-const DEBT_COLS = [["name","Debt","text"],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["kind","Loan type",LOAN_TYPES],["balance","Balance","number"],["apr","Interest %/yr","number"],["min_payment","Min. payment/mo","number"]];
-const GOAL_COLS = [["name","Goal","text"],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["target_amount","Cost in today's money","number"],["target_date","Target date","month"],["priority","Priority (1 = top)",["1","2","3","4","5"]],["current_value","Already saved","number"]];
+const DEBT_COLS = [["name","Debt","text"],["lender","Lender / bank","text"],["kind","Loan type",LOAN_TYPES],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["balance","Balance left","number"],["apr","Interest %/yr","number"],["repay","Repayment",REPAY],["min_payment","EMI / payment per month","number"],["pay_start","Payments start","month"],["ends","Ends","month"]];
+const GOAL_COLS = [["name","Goal","text"],["type","Goal type",{groups:GOAL_GROUPS}],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["target_amount","Cost in today's money","number"],["target_date","Target date","month"],["priority","Priority (1 = top)",["1","2","3","4","5"]],["risk","Risk",RISK_OPTS],["current_value","Already saved","number"]];
 function editTable(kind, cols){
   const rows = S[kind];
-  const cell = (r,i,[k,,t]) => Array.isArray(t)
-    ? `<select data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${k}">${t.map(o=>`<option ${String(r[k])===o?"selected":""}>${o}</option>`).join("")}</select>`
-    : `<input data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${k}" type="${t}" value="${esc(r[k])}" ${t==="number"?'min="0" step="any"':""}>`;
+  const opt = (o,cur) => { const [v,l] = Array.isArray(o) ? o : [o,o]; return `<option value="${esc(v)}" ${String(cur)===String(v)?"selected":""}>${esc(l)}</option>`; };
+  const cell = (r,i,[k,label,t]) => t && t.groups
+    ? `<select data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${label}">${Object.entries(t.groups).map(([g,os])=>`<optgroup label="${esc(g)}">${os.map(o=>opt(o,r[k])).join("")}</optgroup>`).join("")}</select>`
+    : Array.isArray(t)
+    ? `<select data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${label}">${t.map(o=>opt(o,r[k])).join("")}</select>`
+    : `<input data-k="${kind}" data-i="${i}" data-f="${k}" id="${kind}-${i}-${k}" aria-label="${label}" type="${t}" value="${esc(r[k])}" ${t==="number"?'min="0" step="any"':""}>`;
   return `<div class="tbl"><table class="edit"><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join("")}<th></th></tr></thead><tbody>
     ${rows.map((r,i)=>`<tr>${cols.map(c=>`<td>${cell(r,i,c)}</td>`).join("")}<td><button class="btn ghost small" data-del="${kind}" data-i="${i}" aria-label="Remove row">Remove</button></td></tr>`).join("")}
     </tbody></table></div>
-    <div class="row" style="margin-top:12px"><button class="btn small" data-add="${kind}">+ Add ${kind==="debts"?"a debt":"a goal"}</button></div>`;
+    <div class="row" style="margin-top:12px"><button class="btn small" data-add="${kind}">+ Add ${kind==="debts"?"a debt":"a blank goal"}</button>
+    ${kind==="goals" ? `<label for="goalTpl" class="small muted">or start from a goal type:</label><select id="goalTpl" style="width:auto"><option value="">Choose a goal type…</option>${Object.entries(GOAL_GROUPS).map(([g,os])=>`<optgroup label="${esc(g)}">${os.map(o=>`<option>${esc(o)}</option>`).join("")}</optgroup>`).join("")}</select>` : ""}</div>`;
 }
 function debtsView(){
   const fx=+S.profile.fx_usd_inr, tot=S.debts.reduce((s,d)=>s+(+d.balance||0)/(d.currency==="INR"?fx:1),0);
@@ -719,10 +763,17 @@ function debtsView(){
   <div class="kpis" style="margin-top:12px"><div class="kpi"><h3>Total owed, in USD</h3><div class="v">${money(tot)}</div></div>
   <div class="kpi"><h3>By loan type</h3>${(()=>{ const by={}; for (const d of S.debts){ by[d.kind]=(by[d.kind]||0)+(+d.balance||0)/(d.currency==="INR"?fx:1); }
       const e=Object.entries(by).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]); return e.length ? e.map(([k,v])=>`<div class="s" style="display:flex;justify-content:space-between;gap:8px;color:var(--ink)"><span>${esc(k)}</span><span class="num">${money(v)}</span></div>`).join("") : `<div class="s">No balances yet</div>`; })()}</div>
-  <div class="kpi"><h3>Gets attacked first</h3><div class="s" style="font-size:.95rem;color:var(--ink)">${hi.length?esc(hi.join(", ")):"No high-interest debt"}</div><div class="s">${S.profile.high_interest_apr}%+ interest</div></div></div>`;
+  <div class="kpi"><h3>Gets attacked first</h3><div class="s" style="font-size:.95rem;color:var(--ink)">${hi.length?esc(hi.join(", ")):"No high-interest debt"}</div><div class="s">${S.profile.high_interest_apr}%+ interest</div></div></div>
+  ${(()=>{ const P = runPlan(S.profile, S.debts, S.goals, 0); if (!P.debts.length) return "";
+    return `<h2>Repayment check</h2><div class="sheet tbl"><table><thead><tr><th>Debt</th><th>Lender</th><th>Structure</th><th class="r">Due this month</th><th>Paid off</th></tr></thead><tbody>
+    ${P.debts.map(d=>`<tr><td><b>${esc(d.name)}</b> ${ccy(d.currency)}<div class="small muted">${esc(d.kind)}</div></td><td>${esc(d.lender)||"–"}</td><td class="small">${esc(d.note)}</td><td class="r num">${money(d.firstPay,d.currency)}</td><td class="num">${d.paid?niceMonth(d.paid):"Not within 40 yrs"}</td></tr>`).join("")}</tbody></table>
+    <p class="small muted" style="margin:10px 0 0">Leave "EMI / payment per month" at 0 for an EMI loan with an end date and the standard EMI is worked out for you. During a moratorium, interest keeps adding to the balance until payments start.</p></div>`; })()}
+  <h2>Linking your loan accounts</h2>
+  <div class="sheet small"><p style="margin-top:0">For safety, this app never asks for bank passwords or account numbers. Enter balances yourself and update them at each monthly check-in.</p>
+    <p style="margin-bottom:0">For automatic US balances, connect a secure, read-only finance connector to Claude and ask Claude to update your numbers. Indian loans are usually linked through RBI's Account Aggregator system in an Indian app; then enter the balance here.</p></div>`;
 }
 function goalsView(){
-  return `<p class="lead">What you're investing toward. Enter the cost <b>in today's money</b>; inflation is added for you. Priority 1 gets funded first.</p>
+  return `<p class="lead">Any goal you have: a home, land, a wedding, starting a business, your parents, retirement, travel. Start from a goal type to get sensible defaults, then set the cost <b>in today's money</b> (inflation is added for you). Priority 1 gets funded first. Risk decides how much goes into stocks.</p>
   <div class="sheet">${editTable("goals", GOAL_COLS)}</div>
   <div class="grid2" style="margin-top:12px">
     <div class="sheet"><h3>How each goal is invested</h3><table><thead><tr><th>Years to goal</th><th class="r">Equity</th><th class="r">Safer assets</th></tr></thead><tbody>
@@ -802,18 +853,22 @@ document.addEventListener("click", e => {
   if (t.dataset.ask!=null){ const P = runPlan(S.profile, S.debts, S.goals, 0), g = P.goals[+t.dataset.ask];
     if (g) askAdvisor(`Explain the plan for my "${g.name}" goal: where the money should go, how it's expected to grow, and what to watch out for.`, `ans-${t.dataset.ask}`, t.dataset.ask); return; }
   if (t.dataset.add){ const k=t.dataset.add; update(()=>S[k].push(k==="debts"
-      ? {name:"", country:"US", currency:"USD", kind:"Credit card", balance:0, apr:0, min_payment:0}
-      : {name:"", country:"US", currency:"USD", target_amount:0, target_date:ymAhead(3), priority:3, current_value:0, started:monthLabel(new Date(),0), start_value:0, history:[]}));
+      ? {name:"", lender:"", country:"US", currency:"USD", kind:"Credit card", repay:"minimum", balance:0, apr:0, min_payment:0, pay_start:"", ends:""}
+      : {name:"", type:"Other", risk:"glide", country:"US", currency:"USD", target_amount:0, target_date:ymAhead(3), priority:3, current_value:0, started:monthLabel(new Date(),0), start_value:0, history:[]}));
     const inp = document.querySelector(`#${k}-${S[k].length-1}-name`); inp && inp.focus(); return; }
   if (t.dataset.del){ update(()=>S[t.dataset.del].splice(+t.dataset.i,1)); return; }
   if (t.dataset.delck){ update(()=>{ S.checkins = S.checkins.filter(c=>c.month!==t.dataset.delck); }); return; }
 });
 document.addEventListener("change", e => {
   const el = e.target;
+  if (el.id==="goalTpl" && el.value){ const ty = el.value, [yrs, ctry, risk] = GOAL_DEFAULTS[ty] || [3,"US","glide"];
+    update(()=>S.goals.push({name:ty, type:ty, risk, country:ctry, currency:ctry==="India"?"INR":"USD", target_amount:0, target_date:ymAhead(yrs), priority:3, current_value:0, started:monthLabel(new Date(),0), start_value:0, history:[]}));
+    const inp = document.querySelector(`#goals-${S.goals.length-1}-target_amount`); inp && inp.focus(); return; }
   if (el.id==="whatif"){ whatIf = +el.value; render(); const w=$("#whatif"); w && w.focus(); return; }
   if (el.dataset.k){ const {k,i,f} = el.dataset; let v = el.value;
     if (el.type==="number" || ["priority"].includes(f)) v = el.value==="" ? 0 : +el.value;
     update(()=>{ const r = S[k][+i]; r[f] = v; if (f==="country") r.currency = v==="India" ? "INR" : "USD";
+      if (k==="debts" && f==="kind") r.repay = REPAY_DEFAULT[v] || "emi";
       if (k==="goals" && f==="current_value" && !(r.history||[]).length && r.started===monthLabel(new Date(),0)) r.start_value = v; }); return; }
   if (el.dataset.p){ const f=el.dataset.p; update(()=>{ S.profile[f] = (el.type==="number") ? (el.value===""?0:+el.value) : el.value; }); }
 });
