@@ -1,0 +1,180 @@
+{
+ "as_of": "2026-10-05",
+ "fx": {
+  "usd_inr": 96.3,
+  "as_of": "2026-10-05",
+  "change_1y_pct": 8.54,
+  "avg_depr_10y_pct": 3.6,
+  "sources": [
+   {
+    "title": "Trading Economics: USD/INR",
+    "url": "https://tradingeconomics.com/india/currency"
+   },
+   {
+    "title": "Business Standard: rupee over the last decade (Aug 2026)",
+    "url": "https://www.business-standard.com/markets/capital-market-news/indian-rupee-witnessed-steady-depreciation-over-last-decade-with-steepest-fall-against-euro-rbi-126080701158_1.html"
+   }
+  ]
+ },
+ "instruments": [
+  {
+   "id": "us_hysa",
+   "name": "High-yield savings account",
+   "where": "US bank",
+   "currency": "USD",
+   "kind": "safe",
+   "metric": "Top APYs",
+   "value": "3.75–4.21%",
+   "plan_rate": 4,
+   "as_of": "2026-10-02",
+   "source": {
+    "title": "CNBC Select: best high-yield savings",
+    "url": "https://www.cnbc.com/select/best-high-yield-savings-accounts/"
+   },
+   "tax": "Interest is taxed as ordinary income in the US.",
+   "pfic": false
+  },
+  {
+   "id": "us_tbill",
+   "name": "US Treasury bills",
+   "where": "US brokerage or TreasuryDirect",
+   "currency": "USD",
+   "kind": "safe",
+   "metric": "1-year yield",
+   "value": "4.46%",
+   "plan_rate": 4.2,
+   "as_of": "2026-10-02",
+   "source": {
+    "title": "YCharts: 1 Year Treasury Rate",
+    "url": "https://ycharts.com/indicators/1_year_treasury_rate"
+   },
+   "tax": "Federal tax only; exempt from state and local income tax.",
+   "pfic": false
+  },
+  {
+   "id": "us_index",
+   "name": "US broad index fund (S&P 500 / total market)",
+   "where": "US brokerage",
+   "currency": "USD",
+   "kind": "equity",
+   "metric": "Annualized total return",
+   "value": "10y 15.3% · 20y 11.2%",
+   "plan_rate": 8,
+   "as_of": "2026-10-02",
+   "source": {
+    "title": "Chartrow: S&P 500 trailing returns",
+    "url": "https://chartrow.com/sp500/trailing-returns"
+   },
+   "tax": "Long-term gains taxed at 0/15/20% for US tax residents.",
+   "pfic": false,
+   "note": "Planning rate is set well below history on purpose."
+  },
+  {
+   "id": "us_india_etf",
+   "name": "US-listed India ETF (e.g. INDA)",
+   "where": "US brokerage",
+   "currency": "USD",
+   "kind": "equity",
+   "metric": "Return in USD",
+   "value": "1y −11.2% · since 2012 5.5%/yr · fee 0.61%",
+   "plan_rate": 7,
+   "as_of": "2026-10-02",
+   "source": {
+    "title": "StockAnalysis: INDA",
+    "url": "https://stockanalysis.com/etf/inda/"
+   },
+   "tax": "A US fund, so no PFIC problem. US capital-gains rules apply.",
+   "pfic": false,
+   "note": "Indian stocks measured in dollars, so a weaker rupee lowers the USD return."
+  },
+  {
+   "id": "in_index",
+   "name": "Indian equity index fund (Nifty 50 / 500)",
+   "where": "India, through an NRE/NRO account",
+   "currency": "INR",
+   "kind": "equity",
+   "metric": "Nifty 500 TRI, annualized",
+   "value": "5y 11.89%",
+   "plan_rate": 11,
+   "as_of": "2026-09-30",
+   "source": {
+    "title": "NSE: Nifty 500 factsheet (Sep 2026)",
+    "url": "https://nsearchives.nseindia.com/content/indices/ind_nifty_500.pdf"
+   },
+   "tax": "India: 12.5% on long-term gains above ₹1.25 lakh a year, 20% short-term. US tax residents: PFIC rules apply.",
+   "pfic": true
+  },
+  {
+   "id": "in_liquid",
+   "name": "Indian liquid fund",
+   "where": "India",
+   "currency": "INR",
+   "kind": "safe",
+   "metric": "Category 1-year return",
+   "value": "≈6.3%",
+   "plan_rate": 6.3,
+   "as_of": "2026-10-01",
+   "source": {
+    "title": "INDmoney: liquid funds",
+    "url": "https://www.indmoney.com/mutual-funds/debt/liquid"
+   },
+   "tax": "India: taxed at your slab rate. US tax residents: PFIC rules apply.",
+   "pfic": true
+  },
+  {
+   "id": "in_nre_fd",
+   "name": "NRE fixed deposit (SBI)",
+   "where": "India, NRE account",
+   "currency": "INR",
+   "kind": "safe",
+   "metric": "Rate by tenor",
+   "value": "1–2y 6.25% · 2–3y 6.40% · 5–10y 6.05%",
+   "plan_rate": 6.3,
+   "as_of": "2026-08-15",
+   "source": {
+    "title": "SBI: NRE fixed deposit rates",
+    "url": "https://sbi.bank.in/web/interest-rates/interest-rates/sbi-nri-services-interest-rates/sbi-nri-services-nre-fixed-deposit-interest-rate"
+   },
+   "tax": "Tax-free in India for NRIs. Taxable in the US if you're a US tax resident. Broken before 1 year, it earns no interest.",
+   "pfic": false
+  }
+ ],
+ "benchmarks": [
+  {
+   "id": "rbi_repo",
+   "name": "RBI repo rate",
+   "value": 5.25,
+   "as_of": "2026-10-05",
+   "note": "Unchanged for four reviews. Decision due Oct 7, 2026; economists expect a 0.25-point hike.",
+   "source": {
+    "title": "Upstox: RBI MPC October 2026",
+    "url": "https://upstox.com/news/personal-finance/financial-regulations/rbi-mpc-october-2026-will-repo-rate-rise-25-bps-what-borrowers-and-fd-savers-should-know/article-201240/"
+   }
+  },
+  {
+   "id": "us_prime",
+   "name": "US Prime rate",
+   "value": 7,
+   "as_of": "2026-09-16",
+   "note": "Raised 0.25 points on Sep 16, 2026. Fed funds target 3.75–4.00%; next Fed meeting Oct 28, 2026.",
+   "source": {
+    "title": "FedPrimeRate.com: US Prime rate",
+    "url": "https://www.fedprimerate.com/"
+   }
+  }
+ ],
+ "tax_sources": [
+  {
+   "title": "Taxes for Expats: US tax on Indian mutual funds (PFIC)",
+   "url": "https://www.taxesforexpats.com/articles/investments/us-tax-on-nri-mutual-funds-india.html"
+  },
+  {
+   "title": "Mintra Finserv: NRI mutual fund taxation 2026",
+   "url": "https://www.mintrafinserv.com/insights/wealth/nri-mutual-fund-taxation-india-2026"
+  },
+  {
+   "title": "Sprintax: OPT student taxes (5-year exempt rule)",
+   "url": "https://blog.sprintax.com/opt-student-tax-guide/"
+  }
+ ]
+}

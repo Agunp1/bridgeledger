@@ -55,9 +55,11 @@ Every threshold is editable on the Setup page.
 Expected returns (`core/assumptions.py`) are per currency: USD equity 8% / safe 4%, INR equity 11% / safe 6.5%.
 They are planning assumptions, not predictions.
 
-## Two versions
+**Public website:** `https://agunp1.github.io/bridgeledger/` with email + password accounts (see [SETUP_WEBSITE.md](SETUP_WEBSITE.md) to switch it on).
 
-- **Web version** (`web/index.html`): a single-page app with the same planning engine in JavaScript, published at the link above. Nothing to install.
+## Versions
+
+- **Web version** (`web/index.html`): a single-page app with the planning engine in JavaScript. The same file is published as the Claude link and built into the public website (`docs/`, via `scripts/build_site.py`), where Supabase provides sign-up, login and a private per-user database with row-level security (`supabase/schema.sql`).
 - **Python version** (`app.py` + `pages/`): Streamlit + SQLite, runs on your own computer. Good for extending with Python and pandas.
 
 Both produce identical plans for the same inputs.
@@ -83,7 +85,10 @@ API for today's USD→INR rate.
 ## Project structure
 
 ```
-web/index.html         Browser version (published link)
+web/index.html         Browser version (Claude link + website source)
+docs/                  Public website for GitHub Pages (built, plus config.js and market.json)
+scripts/build_site.py  Builds docs/ from web/index.html
+supabase/schema.sql    Database table and privacy rules for website accounts
 app.py                 Dashboard: this month's plan, goals, discipline streak
 pages/
   1_Setup.py           Income, essentials, currency, plan rules

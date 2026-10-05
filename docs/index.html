@@ -1,3 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Personal finance discipline for money in two countries: debts, goals, an investment advisor and monthly check-ins.">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html{color-scheme:light}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
 <title>BridgeLedger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -119,7 +133,8 @@ legend{font-family:var(--f-display);font-weight:700;padding:0 6px;font-size:1.02
 @media (prefers-reduced-motion:no-preference){.bar .t i{transition:width .35s ease}}
 @media (max-width:520px){.bar{grid-template-columns:86px 1fr 74px;font-size:.82rem}}
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header>
     <div class="brand">
@@ -143,6 +158,8 @@ legend{font-family:var(--f-display);font-weight:700;padding:0 6px;font-size:1.02
   <main id="view"></main>
 </div>
 
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script>
 /* =================== planning engine (port of core/planner.py) =================== */
 const RET = { USD:{equity:8, safe:4}, INR:{equity:11, safe:6.5} };
@@ -998,3 +1015,5 @@ if (tab==="account" && !SITE) tab = "home";
 render();
 initStore();
 </script>
+</body>
+</html>
