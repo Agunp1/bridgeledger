@@ -97,6 +97,25 @@ legend{font-family:var(--f-display);font-weight:700;padding:0 6px;font-size:1.02
 .rules ol{margin:0;padding-left:20px;max-width:70ch} .rules li{margin-bottom:5px}
 .muted{color:var(--muted)} .small{font-size:.85rem}
 .score{font-family:var(--f-display);font-size:2.4rem;font-weight:700;line-height:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.cards>*{min-width:0}
+.gcard{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:16px;display:grid;gap:10px;align-content:start}
+.gcard header{all:unset;display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.gcard h4{margin:0;font-size:1.05rem;font-family:var(--f-display);font-weight:700}
+.meter{height:10px;background:var(--paper);border-radius:999px;position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--good);border-radius:999px}
+.meter b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:.82rem;color:var(--muted)}
+.facts strong{display:block;color:var(--ink);font-family:var(--f-num);font-weight:500;font-size:.95rem}
+.alloc{display:flex;height:12px;border-radius:999px;overflow:hidden;background:var(--paper)}
+.alloc i{display:block;height:100%}
+.inst{border-top:1px solid var(--rule);padding-top:10px;display:grid;gap:3px}
+.inst .hd{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.src{font-size:.78rem;color:var(--muted)} .src a{color:var(--usd)}
+.flag{font-size:.84rem;background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:7px 10px}
+.answer{white-space:pre-wrap;background:var(--paper);border-radius:8px;padding:12px 14px;font-size:.93rem;min-height:1em}
+.steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:.92rem}
+@media (max-width:520px){.facts{grid-template-columns:1fr 1fr}}
 @media (prefers-reduced-motion:no-preference){.bar .t i{transition:width .35s ease}}
 @media (max-width:520px){.bar{grid-template-columns:86px 1fr 74px;font-size:.82rem}}
 </style>
@@ -111,6 +130,8 @@ legend{font-family:var(--f-display);font-weight:700;padding:0 6px;font-size:1.02
   </header>
   <nav role="tablist" id="tabs">
     <button role="tab" data-tab="home">This month</button>
+    <button role="tab" data-tab="progress">Progress</button>
+    <button role="tab" data-tab="advisor">Advisor</button>
     <button role="tab" data-tab="plan">Plan</button>
     <button role="tab" data-tab="debts">Debts</button>
     <button role="tab" data-tab="goals">Goals</button>
@@ -241,10 +262,89 @@ function disciplineScore(pl, ac){
   return Math.round(100*(.4*r(ac.debt,pl.debt) + .4*r(ac.invest,pl.invest) + .2*life));
 }
 
+/* =================== market data (refreshed weekly into the store; this is the built-in fallback) =================== */
+const MARKET_SNAPSHOT = {
+  as_of:"2026-10-05",
+  fx:{usd_inr:96.30, as_of:"2026-10-05", change_1y_pct:8.54, avg_depr_10y_pct:3.6,
+    sources:[{title:"Trading Economics: USD/INR", url:"https://tradingeconomics.com/india/currency"},
+             {title:"Business Standard: rupee over the last decade (Aug 2026)", url:"https://www.business-standard.com/markets/capital-market-news/indian-rupee-witnessed-steady-depreciation-over-last-decade-with-steepest-fall-against-euro-rbi-126080701158_1.html"}]},
+  instruments:[
+    {id:"us_hysa", name:"High-yield savings account", where:"US bank", currency:"USD", kind:"safe", metric:"Top APYs", value:"3.75–4.21%", plan_rate:4.0, as_of:"2026-10-02",
+     source:{title:"CNBC Select: best high-yield savings", url:"https://www.cnbc.com/select/best-high-yield-savings-accounts/"}, tax:"Interest is taxed as ordinary income in the US.", pfic:false},
+    {id:"us_tbill", name:"US Treasury bills", where:"US brokerage or TreasuryDirect", currency:"USD", kind:"safe", metric:"1-year yield", value:"4.46%", plan_rate:4.2, as_of:"2026-10-02",
+     source:{title:"YCharts: 1 Year Treasury Rate", url:"https://ycharts.com/indicators/1_year_treasury_rate"}, tax:"Federal tax only; exempt from state and local income tax.", pfic:false},
+    {id:"us_index", name:"US broad index fund (S&P 500 / total market)", where:"US brokerage", currency:"USD", kind:"equity", metric:"Annualized total return", value:"10y 15.3% · 20y 11.2%", plan_rate:8.0, as_of:"2026-10-02",
+     source:{title:"Chartrow: S&P 500 trailing returns", url:"https://chartrow.com/sp500/trailing-returns"}, tax:"Long-term gains taxed at 0/15/20% for US tax residents.", pfic:false,
+     note:"Planning rate is set well below history on purpose."},
+    {id:"us_india_etf", name:"US-listed India ETF (e.g. INDA)", where:"US brokerage", currency:"USD", kind:"equity", metric:"Return in USD", value:"1y −11.2% · since 2012 5.5%/yr · fee 0.61%", plan_rate:7.0, as_of:"2026-10-02",
+     source:{title:"StockAnalysis: INDA", url:"https://stockanalysis.com/etf/inda/"}, tax:"A US fund, so no PFIC problem. US capital-gains rules apply.", pfic:false,
+     note:"Indian stocks measured in dollars, so a weaker rupee lowers the USD return."},
+    {id:"in_index", name:"Indian equity index fund (Nifty 50 / 500)", where:"India, through an NRE/NRO account", currency:"INR", kind:"equity", metric:"Nifty 500 TRI, annualized", value:"5y 11.89%", plan_rate:11.0, as_of:"2026-09-30",
+     source:{title:"NSE: Nifty 500 factsheet (Sep 2026)", url:"https://nsearchives.nseindia.com/content/indices/ind_nifty_500.pdf"},
+     tax:"India: 12.5% on long-term gains above ₹1.25 lakh a year, 20% short-term. US tax residents: PFIC rules apply.", pfic:true},
+    {id:"in_liquid", name:"Indian liquid fund", where:"India", currency:"INR", kind:"safe", metric:"Category 1-year return", value:"≈6.3%", plan_rate:6.3, as_of:"2026-10-01",
+     source:{title:"INDmoney: liquid funds", url:"https://www.indmoney.com/mutual-funds/debt/liquid"}, tax:"India: taxed at your slab rate. US tax residents: PFIC rules apply.", pfic:true},
+    {id:"in_nre_fd", name:"NRE fixed deposit (SBI)", where:"India, NRE account", currency:"INR", kind:"safe", metric:"Rate by tenor", value:"1–2y 6.25% · 2–3y 6.40% · 5–10y 6.05%", plan_rate:6.3, as_of:"2026-08-15",
+     source:{title:"SBI: NRE fixed deposit rates", url:"https://sbi.bank.in/web/interest-rates/interest-rates/sbi-nri-services-interest-rates/sbi-nri-services-nre-fixed-deposit-interest-rate"},
+     tax:"Tax-free in India for NRIs. Taxable in the US if you're a US tax resident. Broken before 1 year, it earns no interest.", pfic:false}
+  ],
+  tax_sources:[
+    {title:"Taxes for Expats: US tax on Indian mutual funds (PFIC)", url:"https://www.taxesforexpats.com/articles/investments/us-tax-on-nri-mutual-funds-india.html"},
+    {title:"Mintra Finserv: NRI mutual fund taxation 2026", url:"https://www.mintrafinserv.com/insights/wealth/nri-mutual-fund-taxation-india-2026"},
+    {title:"Sprintax: OPT student taxes (5-year exempt rule)", url:"https://blog.sprintax.com/opt-student-tax-guide/"}]
+};
+let MARKET = MARKET_SNAPSHOT;
+const inst = id => MARKET.instruments.find(i=>i.id===id);
+
+/* US tax status: F-1 students are usually nonresident aliens for their first 5 calendar years. */
+function taxPlan(p, deadlineYear){
+  const nowY = new Date().getFullYear();
+  if (p.us_tax_status==="nra") return {known:true, residentDuring:false, residentNow:false, switchYear:null, label:"Nonresident alien (set by you)"};
+  if (p.us_tax_status==="resident") return {known:true, residentDuring:true, residentNow:true, switchYear:null, label:"US tax resident (set by you)"};
+  const a = parseInt(p.f1_arrival_year,10);
+  if (!a || a < 1990 || a > nowY) return {known:false, residentDuring:true, residentNow:null, switchYear:null, label:"Unknown: add your F-1 arrival year in Setup"};
+  const sw = a + 5, residentNow = nowY >= sw, residentDuring = deadlineYear >= sw;
+  return {known:true, residentNow, residentDuring, switchYear: sw,
+    label: residentNow ? `Likely a US tax resident since ${sw}` : `Likely a nonresident alien until the end of ${sw-1}`};
+}
+function rateInGoalCcy(i, goalCcy, drift){
+  const r = i.plan_rate/100, d = drift/100;
+  if (i.currency==="USD" && goalCcy==="INR") return ((1+r)*(1+d)-1)*100;
+  if (i.currency==="INR" && goalCcy==="USD") return ((1+r)/(1+d)-1)*100;
+  return i.plan_rate;
+}
+function adviseGoal(g, p){
+  const m = Math.max(g.deadline,0), e = eqShare(m), dlYear = +String(g.date).slice(0,4), tp = taxPlan(p, dlYear);
+  const drift = +p.fx_drift_pct || 0, inINR = g.currency==="INR";
+  const eqI = inINR ? (tp.residentDuring ? inst("us_india_etf") : inst("in_index")) : inst("us_index");
+  const safeI = inINR ? inst("in_nre_fd") : (m > 6 ? inst("us_tbill") : inst("us_hysa"));
+  const rEq = rateInGoalCcy(eqI, g.currency, drift), rSafe = rateInGoalCcy(safeI, g.currency, drift);
+  const blended = e*rEq + (1-e)*rSafe;
+  const steps = [], flags = [];
+  const monthly = g.need;
+  if (e>0) steps.push(`Each month, put ${Math.round(e*100)}% of this goal's SIP into ${eqI.name} and ${Math.round((1-e)*100)}% into ${safeI.name}. Where: ${eqI.where}; ${safeI.where}.`);
+  else steps.push(`Keep this goal's money in ${safeI.name} (${safeI.where}). It's too close to the date for stocks.`);
+  const next = GLIDE.find(([y])=> m/12 >= y && y>0);
+  if (next && e>0){ const idx = GLIDE.findIndex(x=>x===next), lower = GLIDE[idx+1];
+    const monthsToStep = Math.max(1, m - next[0]*12 + 1);
+    if (lower) steps.push(`In ${niceMonth(monthLabel(new Date(),monthsToStep))} (${monthsToStep} month${monthsToStep===1?"":"s"} from now), shift to ${Math.round(lower[1]*100)}% equity by moving part of the equity into the safe option.`); }
+  if (inINR && eqI.currency==="USD"){
+    const startMove = Math.max(0, m-24);
+    steps.push(`From ${niceMonth(monthLabel(new Date(), startMove))}, move money to India in equal monthly amounts into an NRE FD, so the full amount is in rupees by ${niceMonth(g.date)}. Spreading it out avoids converting everything at one bad exchange rate.`);
+  }
+  if (!tp.known) flags.push("Add the year you first arrived in the US on F-1 in Setup. Until then the advisor assumes you're a US tax resident and avoids Indian mutual funds, which is the safer choice.");
+  if (tp.switchYear && tp.switchYear <= dlYear && !tp.residentNow && inINR)
+    flags.push(`You're likely to become a US tax resident in ${tp.switchYear}, before this goal's date. Indian mutual funds held after then fall under PFIC rules, so the advisor uses a US-listed India ETF instead.`);
+  if (eqI.pfic && tp.residentDuring) flags.push("Indian mutual funds are PFICs for US tax residents: high tax plus a Form 8621 for each fund every year.");
+  if (inINR && tp.residentDuring) flags.push("As a US tax resident, report Indian accounts on an FBAR once their total tops $10,000 at any point in the year.");
+  return {e, eqI, safeI, rEq, rSafe, blended, steps, flags, tax:tp, monthly};
+}
+
 /* =================== example data (shown until you start your own) =================== */
 function ymAhead(y){ const n=new Date(), t=n.getFullYear()*12+n.getMonth()+Math.round(y*12); return `${Math.floor(t/12)}-${String(t%12+1).padStart(2,"0")}`; }
 const DEFAULT_PROFILE = {name:"", income_usd:0, income_inr:0, essentials_usd:0, essentials_inr:0, lifestyle_pct:10,
-  emergency_balance_usd:0, emergency_months:4, starter_emergency_months:1, fx_usd_inr:88, fx_drift_pct:2, remit_fee_pct:1,
+  emergency_balance_usd:0, emergency_months:4, starter_emergency_months:1, fx_usd_inr:96.3, fx_drift_pct:3, remit_fee_pct:1,
+  f1_arrival_year:"", us_tax_status:"auto",
   debt_strategy:"avalanche", high_interest_apr:12, low_interest_apr:6, min_goal_share_pct:20, inflation_usd_pct:3, inflation_inr_pct:5.5};
 function exampleState(){ return { demo:true, checkins:[],
   profile:{...DEFAULT_PROFILE, name:"Example student", income_usd:5200, essentials_usd:2300, essentials_inr:15000, emergency_balance_usd:1500},
@@ -262,25 +362,35 @@ function exampleState(){ return { demo:true, checkins:[],
 function blankState(){ return {demo:false, profile:{...DEFAULT_PROFILE}, debts:[], goals:[], checkins:[]}; }
 
 /* =================== storage: private per person =================== */
-let S = exampleState(), store = {kind:"none"}, saveTimer = null, canWrite = true;
+let S = normalize(exampleState()), store = {kind:"none"}, saveTimer = null, canWrite = true, ASK = null, marketFromStore = false;
+function normalize(st){
+  st.profile = {...DEFAULT_PROFILE, ...(st.profile||{})};
+  st.debts ||= []; st.goals ||= []; st.checkins ||= [];
+  const nowYm = monthLabel(new Date(),0);
+  for (const g of st.goals){ g.started ||= nowYm; if (g.start_value==null) g.start_value = +g.current_value||0; g.history ||= []; }
+  return st;
+}
 const $ = s => document.querySelector(s);
 const setSave = t => { $("#saveState").textContent = t; };
 async function initStore(){
   try {
-    const [db, user] = await Promise.all([window.claude?.use?.("db"), window.claude?.use?.("user")]);
+    const [db, user, sample] = await Promise.all([window.claude?.use?.("db"), window.claude?.use?.("user"), window.claude?.use?.("sample")]);
+    if (sample){ ASK = sample; render(); }
+    if (db){ try { const m = await db.doc("market/latest").get(); const d = m.exists ? m.data() : null;
+      if (d && d.json){ const parsed = JSON.parse(d.json); if (parsed && parsed.instruments && parsed.as_of >= MARKET_SNAPSHOT.as_of){ MARKET = parsed; marketFromStore = true; render(); } } } catch(_){} }
     if (db && user){
       const id = await user.id();
       if (id){
         store = {kind:"db", ref: db.doc(`data/users/${id}/plan`)};
         const snap = await store.ref.get();
         const data = snap.exists ? snap.data() : null;
-        if (data && data.state){ S = JSON.parse(data.state); render(); }
+        if (data && data.state){ S = normalize(JSON.parse(data.state)); render(); }
         setSave("Saved privately to your account");
         return;
       }
     }
   } catch(e){ /* fall through to browser storage */ }
-  try { const raw = localStorage.getItem("bridgeledger"); if (raw){ S = JSON.parse(raw); render(); } store = {kind:"local"};
+  try { const raw = localStorage.getItem("bridgeledger"); if (raw){ S = normalize(JSON.parse(raw)); render(); } store = {kind:"local"};
     setSave("Saved in this browser only"); } catch(e){ store = {kind:"none"}; setSave("Not saved: storage unavailable"); }
 }
 function persist(){
@@ -313,7 +423,7 @@ const statusPill = s => s==="On track" ? `<span class="pill good">On track</span
 
 /* =================== views =================== */
 let tab = "home", whatIf = 0;
-const TAB_IDS = ["home","plan","debts","goals","checkin","setup"];
+const TAB_IDS = ["home","progress","advisor","plan","debts","goals","checkin","setup"];
 function banner(){
   const b = $("#banner");
   if (S.demo) b.innerHTML = `<div class="banner"><p><b>You're looking at an example plan</b> for a fictional student, so you can see how it works. Nothing here is saved.</p>
@@ -461,6 +571,131 @@ function planView(P){
     Expected returns (USD 8% equity / 4% safe, INR 11% / 6.5%) are planning assumptions, not predictions or investment advice.</p></div>`;
 }
 
+/* ---------- Progress: how close each goal is ---------- */
+function goalPace(g, sg, p){
+  // Where the goal should be today if it had followed its required monthly path since it started.
+  const infl = g.currency==="INR" ? +p.inflation_inr_pct : +p.inflation_usd_pct;
+  const now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOff = monthsBetween(start, g.started);            // <= 0
+  const total = sg.deadline - startOff;                        // months from start to date
+  const elapsed = -startOff;
+  const T = sg.T, v0 = +g.start_value||0, ccyG = g.currency;
+  const pmt = reqMonthly(v0, T, total, ccyG);
+  const path = []; let v = v0;
+  for (let k=0; k<=Math.max(total,0); k++){ path.push(v); if (k<total) v = v*(1+mret(ccyG,total-k)) + pmt; }
+  const expected = path[Math.min(Math.max(elapsed,0), path.length-1)] ?? v0;
+  const saved = +g.current_value||0;
+  return {path, expected, saved, T, pct: T>0 ? Math.min(saved/T,1) : 0, expPct: T>0 ? Math.min(expected/T,1) : 0, startOff, total, elapsed};
+}
+function paceChart(g, pc){
+  const W=320, H=120, pl=6, pr=6, pt=8, pb=18, n=Math.max(pc.total,1), max=Math.max(pc.T, pc.saved, 1);
+  const x = k => pl + (W-pl-pr)*k/n, y = v => pt + (H-pt-pb)*(1 - v/max);
+  const line = pc.path.map((v,k)=>`${k?"L":"M"}${x(k).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  const pts = (g.history||[]).map(h=>({k: monthsBetween(new Date(new Date().getFullYear(), new Date().getMonth(),1), h.month) - pc.startOff, v:+h.value})).filter(o=>o.k>=0 && o.k<=n);
+  const today = Math.min(Math.max(pc.elapsed,0), n);
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Saved so far compared with the path to the target">
+    <line x1="${pl}" x2="${W-pr}" y1="${y(pc.T)}" y2="${y(pc.T)}" stroke="var(--rule)" stroke-dasharray="3 3"/>
+    <path d="${line}" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+    ${pts.map(o=>`<circle cx="${x(o.k)}" cy="${y(o.v)}" r="2.5" fill="var(--usd)"/>`).join("")}
+    <line x1="${x(today)}" x2="${x(today)}" y1="${pt}" y2="${H-pb}" stroke="var(--rule)"/>
+    <circle cx="${x(today)}" cy="${y(pc.saved)}" r="4.5" fill="${pc.saved+0.5>=pc.expected?"var(--good)":"var(--warn)"}" stroke="var(--sheet)" stroke-width="1.5"/>
+    <text x="${pl}" y="${H-4}">${esc(niceMonth(g.started))}</text><text x="${W-pr}" y="${H-4}" text-anchor="end">${esc(niceMonth(g.target_date))}</text></svg></div>`;
+}
+function progressView(P){
+  if (!S.goals.length) return `<p class="lead">Add goals on the Goals tab to track them here.</p>`;
+  const fx = +S.profile.fx_usd_inr, usd = (a,c)=> c==="INR" ? a/fx : a;
+  const rows = S.goals.map(g=>{ const sg = P.goals.find(x=>x.name===g.name); return sg ? {g, sg, pc: goalPace(g, sg, S.profile)} : null; }).filter(Boolean)
+    .sort((a,b)=>a.sg.priority-b.sg.priority);
+  const totSaved = rows.reduce((s,r)=>s+usd(r.pc.saved,r.g.currency),0), totT = rows.reduce((s,r)=>s+usd(r.pc.T,r.g.currency),0);
+  const onPace = rows.filter(r=>r.pc.saved+0.5 >= r.pc.expected).length;
+  return `<p class="lead">How close each goal is, compared with where it should be by now. Update balances in your monthly check-in to keep this current.</p>
+  <div class="kpis">
+    <div class="kpi"><h3>All goals combined</h3><div class="v">${(totT? totSaved/totT*100:0).toFixed(1)}%</div><div class="s">${money(totSaved)} of ${money(totT)} (USD equivalent)</div></div>
+    <div class="kpi"><h3>On pace today</h3><div class="v">${onPace} / ${rows.length}</div><div class="s">saved at least what the path needs by now</div></div>
+    <div class="kpi"><h3>Plan says on time</h3><div class="v">${P.goals.filter(g=>g.status==="On track").length} / ${P.goals.length}</div><div class="s">including debts clearing first</div></div>
+  </div>
+  <h2>Goals</h2>
+  <div class="cards">${rows.map(({g,sg,pc})=>{ const diff = pc.saved - pc.expected, ahead = diff >= -0.5;
+    return `<article class="gcard"><header><h4>${esc(g.name)} ${ccy(g.currency)}</h4><span>${statusPill(sg.status)}</span></header>
+      <div class="meter" title="Saved vs target. The dark tick is where you should be today."><i style="width:${(pc.pct*100).toFixed(1)}%;background:${ahead?"var(--good)":"var(--warn)"}"></i><b style="left:calc(${(pc.expPct*100).toFixed(1)}% - 1px)"></b></div>
+      <div class="facts"><div>Saved<strong>${money(pc.saved,g.currency)}</strong></div><div>Target<strong>${money(pc.T,g.currency)}</strong></div><div>Complete<strong>${(pc.pct*100).toFixed(1)}%</strong></div>
+        <div>Should have now<strong>${money(pc.expected,g.currency)}</strong></div><div>${ahead?"Ahead by":"Behind by"}<strong>${money(Math.abs(diff),g.currency)}</strong></div><div>Due<strong>${niceMonth(g.target_date)}</strong></div></div>
+      ${paceChart(g,pc)}
+      <p class="small muted" style="margin:0">Grey line: the path to the target from ${niceMonth(g.started)}. Dot: today. Blue dots: your check-ins.</p></article>`; }).join("")}</div>`;
+}
+
+/* ---------- Advisor ---------- */
+function instBlock(i, share, rate, goalCcy){
+  return `<div class="inst"><div class="hd"><b>${esc(i.name)}</b><span class="num">${Math.round(share*100)}% · ~${rate.toFixed(1)}%/yr in ${goalCcy}</span></div>
+    <div class="small">${esc(i.where)} · ${esc(i.metric)}: <span class="num">${esc(i.value)}</span>${i.note?` · ${esc(i.note)}`:""}</div>
+    <div class="small muted">${esc(i.tax)}</div>
+    <div class="src">Source: <a href="${esc(i.source.url)}" target="_blank" rel="noopener">${esc(i.source.title)}</a>, ${esc(i.as_of)}</div></div>`;
+}
+let answers = {};
+function advisorView(P){
+  const p = S.profile, fx = MARKET.fx;
+  const tpNow = taxPlan(p, new Date().getFullYear()+10);
+  const cards = P.goals.map((sg,idx)=>{ const a = adviseGoal(sg, p);
+    return `<article class="gcard"><header><h4>${esc(sg.name)} ${ccy(sg.currency)}</h4><span class="small muted">${niceMonth(sg.date)} · ${esc(sg.horizon)}</span></header>
+      <div class="facts"><div>Needs a month<strong>${money(sg.need,sg.currency)}</strong></div><div>Expected growth<strong>~${a.blended.toFixed(1)}%/yr</strong></div><div>Mix today<strong>${Math.round(a.e*100)}% equity</strong></div></div>
+      <div class="alloc" aria-hidden="true"><i style="width:${a.e*100}%;background:var(--good)"></i><i style="width:${(1-a.e)*100}%;background:var(--usd)"></i></div>
+      ${a.e>0 ? instBlock(a.eqI, a.e, a.rEq, sg.currency) : ""}${instBlock(a.safeI, 1-a.e, a.rSafe, sg.currency)}
+      <div><h3 style="margin-top:4px">What to do</h3><ul class="steps">${a.steps.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
+      ${a.flags.map(f=>`<div class="flag">${esc(f)}</div>`).join("")}
+      ${ASK ? `<div class="row"><button class="btn ghost small" data-ask="${idx}">Explain this plan</button></div><div class="answer" id="ans-${idx}" ${answers[idx]?"":"hidden"}>${esc(answers[idx]||"")}</div>` : ""}
+    </article>`; }).join("");
+  return `<p class="lead">For each goal: where the money should sit, in which country and account, what it's expected to grow at, and where those numbers come from. The rules follow your time horizon and your US tax status.</p>
+  <div class="kpis">
+    <div class="kpi"><h3>US tax status</h3><div class="s" style="color:var(--ink);font-size:.95rem">${esc(tpNow.label)}</div><div class="s"><button class="btn ghost small" data-goto="setup" style="margin-top:6px">Change in Setup</button></div></div>
+    <div class="kpi"><h3>USD → INR</h3><div class="v">₹${(+fx.usd_inr).toFixed(2)}</div><div class="s">${esc(fx.as_of)} · rupee ${fx.change_1y_pct>0?"down":"up"} ${Math.abs(fx.change_1y_pct)}% in a year</div></div>
+    <div class="kpi"><h3>Rupee, long run</h3><div class="v">−${fx.avg_depr_10y_pct}%/yr</div><div class="s">average over 10 years; your plan assumes ${p.fx_drift_pct}%</div></div>
+  </div>
+  ${Math.abs(+p.fx_usd_inr - fx.usd_inr)/fx.usd_inr > 0.02 ? `<div class="banner" style="margin-top:12px"><p>Your plan uses ₹${(+p.fx_usd_inr).toFixed(2)} per dollar, but today's rate is ₹${(+fx.usd_inr).toFixed(2)}.</p><button class="btn small" data-act="usefx">Use today's rate</button></div>` : ""}
+  ${ASK ? `<h2>Ask the advisor</h2><form id="askForm" class="sheet"><label for="askQ" class="small muted">Ask anything about your goals, e.g. "Should my wedding money be in India or the US?"</label>
+    <textarea id="askQ" rows="2" style="margin-top:6px" required></textarea><div class="row" style="margin-top:8px"><button class="btn small" type="submit">Ask</button><span class="small muted">Answers use only the numbers and sources on this page.</span></div>
+    <div class="answer" id="ans-free" style="margin-top:10px" ${answers.free?"":"hidden"}>${esc(answers.free||"")}</div></form>` : ""}
+  <h2>Your goals</h2>
+  ${P.goals.length ? `<div class="cards">${cards}</div>` : `<p class="muted">Add goals on the Goals tab.</p>`}
+  <h2>Sources</h2>
+  <div class="sheet small"><p style="margin-top:0">Rates as of ${esc(MARKET.as_of)}${marketFromStore?" (refreshed weekly)":""}. Expected growth uses a conservative planning rate for each option, adjusted for the rupee when the money and the goal are in different currencies. Figures are before tax.</p>
+    <ul style="margin:0;padding-left:18px">${[...fx.sources, ...MARKET.instruments.map(i=>i.source), ...MARKET.tax_sources].filter((s,i,arr)=>arr.findIndex(o=>o.url===s.url)===i).map(s=>`<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a></li>`).join("")}</ul>
+    <p class="muted" style="margin-bottom:0">This is planning information, not tax or investment advice. Tickers are examples, not recommendations. Confirm your tax status and account setup with a CPA who handles both US and India.</p></div>`;
+}
+function advisorContext(P){
+  const p = S.profile;
+  return {
+    person:{income_usd:p.income_usd, income_inr:p.income_inr, us_tax_status: taxPlan(p, new Date().getFullYear()+10).label, f1_arrival_year:p.f1_arrival_year||"unknown", india_status:"NRI"},
+    fx: MARKET.fx, debt_free: P.debtFree,
+    goals: P.goals.map(g=>{ const a = adviseGoal(g,p); return {name:g.name, currency:g.currency, target_date:g.date, cost_at_date:Math.round(g.T), needs_per_month:Math.round(g.need),
+      gets_this_month:Math.round(g.planned), status:g.status, equity_share_now:Math.round(a.e*100)+"%", equity_option:a.eqI.name, safe_option:a.safeI.name,
+      expected_growth_pct:+a.blended.toFixed(1), steps:a.steps, flags:a.flags}; }),
+    instruments: MARKET.instruments.map(i=>({name:i.name, where:i.where, currency:i.currency, figure:`${i.metric}: ${i.value}`, planning_rate_pct:i.plan_rate, tax:i.tax, source:i.source.title, as_of:i.as_of}))
+  };
+}
+async function askAdvisor(question, targetId, key){
+  const P = runPlan(S.profile, S.debts, S.goals, 0);
+  const el = document.getElementById(targetId); if (!el || !ASK) return;
+  el.hidden = false; el.textContent = "Thinking…";
+  const prompt = `You are the advisor inside BridgeLedger, a planning app for someone whose money is split between the US and India.
+Answer the question using ONLY the JSON data below. When you mention a rate or figure, name its source in parentheses.
+Write plain sentences for a non-expert. Under 170 words. You may use short lines starting with "- ". No headings, no markdown bold.
+Don't invent products, rates or tax rules that aren't in the data. End with one short line reminding them to confirm tax status with a CPA who handles US and India.
+
+DATA:
+${JSON.stringify(advisorContext(P))}
+
+QUESTION: ${question}`;
+  try {
+    const res = await ASK(prompt, {modelTier:"default", onText:({text})=>{ el.textContent = text; }});
+    answers[key] = res.text; el.textContent = res.text;
+  } catch(e){
+    const msg = e && e.code==="not_granted" ? "The advisor needs your permission to ask Claude. Allow it when prompted, or from this page's Permissions menu."
+      : e && e.code==="rate_limited" ? "Too many questions in a short time. Try again in a minute."
+      : "Couldn't reach the advisor just now. Try again in a moment.";
+    el.textContent = (e && e.text) ? e.text : msg; answers[key] = el.textContent;
+  }
+}
+
 const DEBT_COLS = [["name","Debt","text"],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["kind","Type",["Short-term","Education","Informal","Other"]],["balance","Balance","number"],["apr","Interest %/yr","number"],["min_payment","Min. payment/mo","number"]];
 const GOAL_COLS = [["name","Goal","text"],["country","Country",["US","India"]],["currency","Currency",["USD","INR"]],["target_amount","Cost in today's money","number"],["target_date","Target date","month"],["priority","Priority (1 = top)",["1","2","3","4","5"]],["current_value","Already saved","number"]];
 function editTable(kind, cols){
@@ -502,6 +737,9 @@ function checkinView(P){
     <label for="ck-debt"><span>Total debt payments (USD equivalent)</span><input id="ck-debt" type="number" min="0" step="any" required></label>
     <label for="ck-inv"><span>Invested + emergency fund (USD equivalent)</span><input id="ck-inv" type="number" min="0" step="any" required></label>
     <label for="ck-notes" style="grid-column:1/-1"><span>What went well, and what to fix next month?</span><textarea id="ck-notes" rows="2"></textarea></label></div>
+    <h3 style="margin-top:16px">Update balances</h3><p class="small muted" style="margin:0 0 8px">What each goal is worth today, so Progress stays accurate.</p>
+    <div class="form">${S.goals.map((g,i)=>`<label for="ck-g-${i}"><span>${esc(g.name||"Goal")} (${esc(g.currency)})</span><input id="ck-g-${i}" type="number" min="0" step="any" value="${esc(g.current_value)}"></label>`).join("")}
+      <label for="ck-ef"><span>Emergency fund (USD)</span><input id="ck-ef" type="number" min="0" step="any" value="${esc(S.profile.emergency_balance_usd)}"></label></div>
     <div class="row" style="margin-top:12px"><button class="btn" type="submit">Save check-in</button><span id="ckResult" class="muted"></span></div></form>
   ${hist.length?`<h2>History</h2><div class="sheet tbl"><table><thead><tr><th>Month</th><th class="r">Score</th><th class="r">Lifestyle</th><th class="r">Debt paid</th><th class="r">Invested</th><th>Notes</th><th></th></tr></thead><tbody>
     ${hist.map(c=>`<tr><td class="num">${niceMonth(c.month)}</td><td class="r"><span class="pill ${c.score>=85?"good":c.score>=70?"warn":"bad"}">${c.score}</span></td>
@@ -519,6 +757,13 @@ function setupView(){
   <fieldset><legend>Lifestyle and safety net</legend><div class="form">${N("lifestyle_pct","Guilt-free spending (% of income)",1)}${N("emergency_balance_usd","Emergency fund saved today (USD)",50)}${N("emergency_months","Emergency fund target (months of essentials)",.5)}</div></fieldset>
   <fieldset><legend>Currency</legend><div class="form">${N("fx_usd_inr","USD to INR rate",.25)}${F("fx_drift_pct","Assumed yearly rupee weakening %",'type="number" step="0.5"')}${N("remit_fee_pct","Cost of sending money home % (fees + FX markup)",.1)}</div>
     <p class="small muted" style="margin:10px 0 0">Check today's rate on your remittance app and update it here now and then.</p></fieldset>
+  <fieldset><legend>US tax status</legend><div class="form">
+    ${F("f1_arrival_year","Year you first arrived in the US on F-1",'type="number" min="1990" max="2100" step="1" placeholder="e.g. 2023"')}
+    <label for="p-us_tax_status"><span>Status</span><select id="p-us_tax_status" data-p="us_tax_status">
+      <option value="auto" ${p.us_tax_status==="auto"?"selected":""}>Work it out from my arrival year</option>
+      <option value="nra" ${p.us_tax_status==="nra"?"selected":""}>I'm a nonresident alien for tax</option>
+      <option value="resident" ${p.us_tax_status==="resident"?"selected":""}>I'm a US tax resident</option></select></label></div>
+    <p class="small muted" style="margin:10px 0 0">F-1 students are usually nonresident aliens for tax in their first five calendar years in the US, then become US tax residents. This decides whether Indian mutual funds make sense for you. Confirm with a CPA.</p></fieldset>
   <fieldset><legend>Plan rules</legend><div class="form">
     <label for="p-debt_strategy"><span>Debt strategy</span><select id="p-debt_strategy" data-p="debt_strategy"><option value="avalanche" ${p.debt_strategy==="avalanche"?"selected":""}>Avalanche: highest interest first (cheapest)</option><option value="snowball" ${p.debt_strategy==="snowball"?"selected":""}>Snowball: smallest balance first (motivating)</option></select></label>
     ${N("min_goal_share_pct","Share kept for goals while clearing high-interest debt (%)",5)}${N("high_interest_apr","High-interest threshold (% per year)",.5)}${N("low_interest_apr","Low-interest threshold: only minimums below this (%)",.5)}
@@ -532,7 +777,7 @@ function render(){
   banner();
   const P = runPlan(S.profile, S.debts, S.goals, tab==="plan" ? whatIf : 0);
   const v = $("#view");
-  v.innerHTML = tab==="home" ? homeView(P) : tab==="plan" ? planView(P) : tab==="debts" ? debtsView() : tab==="goals" ? goalsView() : tab==="checkin" ? checkinView(P) : setupView();
+  v.innerHTML = tab==="home" ? homeView(P) : tab==="progress" ? progressView(P) : tab==="advisor" ? advisorView(P) : tab==="plan" ? planView(P) : tab==="debts" ? debtsView() : tab==="goals" ? goalsView() : tab==="checkin" ? checkinView(P) : setupView();
   const greet = S.profile.name && !S.demo ? ` for ${S.profile.name.split(" ")[0]}` : "";
   document.querySelector(".brand p").textContent = `One plan for your US and India money${greet}`;
 }
@@ -543,14 +788,17 @@ document.addEventListener("click", e => {
   if (t.dataset.tab){ tab = t.dataset.tab; try{ localStorage.setItem("bl-tab", tab); }catch(_){}; render(); window.scrollTo({top:0}); return; }
   if (t.dataset.goto){ tab = t.dataset.goto; render(); window.scrollTo({top:0}); return; }
   const act = t.dataset.act;
-  if (act==="start"){ S = blankState(); tab="setup"; persist(); render(); return; }
-  if (act==="copy"){ const ex=exampleState(); S = {...ex, demo:false, profile:{...ex.profile, name:""}}; tab="setup"; persist(); render(); return; }
+  if (act==="start"){ S = normalize(blankState()); tab="setup"; persist(); render(); return; }
+  if (act==="copy"){ const ex=exampleState(); S = normalize({...ex, demo:false, profile:{...ex.profile, name:""}}); tab="setup"; persist(); render(); return; }
   if (act==="reset1"){ $("#resetConfirm").hidden=false; t.hidden=true; return; }
   if (act==="reset0"){ render(); return; }
-  if (act==="reset2"){ S = blankState(); tab="setup"; persist(); render(); return; }
+  if (act==="reset2"){ S = normalize(blankState()); tab="setup"; persist(); render(); return; }
+  if (act==="usefx"){ update(()=>{ S.profile.fx_usd_inr = +MARKET.fx.usd_inr; }); return; }
+  if (t.dataset.ask!=null){ const P = runPlan(S.profile, S.debts, S.goals, 0), g = P.goals[+t.dataset.ask];
+    if (g) askAdvisor(`Explain the plan for my "${g.name}" goal: where the money should go, how it's expected to grow, and what to watch out for.`, `ans-${t.dataset.ask}`, t.dataset.ask); return; }
   if (t.dataset.add){ const k=t.dataset.add; update(()=>S[k].push(k==="debts"
       ? {name:"", country:"US", currency:"USD", kind:"Short-term", balance:0, apr:0, min_payment:0}
-      : {name:"", country:"US", currency:"USD", target_amount:0, target_date:ymAhead(3), priority:3, current_value:0}));
+      : {name:"", country:"US", currency:"USD", target_amount:0, target_date:ymAhead(3), priority:3, current_value:0, started:monthLabel(new Date(),0), start_value:0, history:[]}));
     const inp = document.querySelector(`#${k}-${S[k].length-1}-name`); inp && inp.focus(); return; }
   if (t.dataset.del){ update(()=>S[t.dataset.del].splice(+t.dataset.i,1)); return; }
   if (t.dataset.delck){ update(()=>{ S.checkins = S.checkins.filter(c=>c.month!==t.dataset.delck); }); return; }
@@ -560,19 +808,24 @@ document.addEventListener("change", e => {
   if (el.id==="whatif"){ whatIf = +el.value; render(); const w=$("#whatif"); w && w.focus(); return; }
   if (el.dataset.k){ const {k,i,f} = el.dataset; let v = el.value;
     if (el.type==="number" || ["priority"].includes(f)) v = el.value==="" ? 0 : +el.value;
-    update(()=>{ S[k][+i][f] = v; if (f==="country") S[k][+i].currency = v==="India" ? "INR" : "USD"; }); return; }
+    update(()=>{ const r = S[k][+i]; r[f] = v; if (f==="country") r.currency = v==="India" ? "INR" : "USD";
+      if (k==="goals" && f==="current_value" && !(r.history||[]).length && r.started===monthLabel(new Date(),0)) r.start_value = v; }); return; }
   if (el.dataset.p){ const f=el.dataset.p; update(()=>{ S.profile[f] = (el.type==="number") ? (el.value===""?0:+el.value) : el.value; }); }
 });
 document.addEventListener("input", e => {
   if (e.target.id==="whatif"){ $("#whatifVal").textContent = "+" + money(+e.target.value); }
 });
 document.addEventListener("submit", e => {
+  if (e.target.id==="askForm"){ e.preventDefault(); const q = $("#askQ").value.trim(); if (q) askAdvisor(q, "ans-free", "free"); return; }
   if (e.target.id!=="ckForm") return; e.preventDefault();
   const P = runPlan(S.profile, S.debts, S.goals, 0), f=P.ledger[0]||{};
   const pl = {lifestyle:f.lifestyle||0, debt:(f.dmin||0)+(f.dextra||0), invest:(f.goals||0)+(f.emergency||0)};
   const ac = {lifestyle:+$("#ck-life").value||0, debt:+$("#ck-debt").value||0, invest:+$("#ck-inv").value||0};
   const month = $("#ck-month").value, score = disciplineScore(pl, ac);
-  update(()=>{ S.checkins = (S.checkins||[]).filter(c=>c.month!==month); S.checkins.push({month, ...ac, pl, score, notes:$("#ck-notes").value}); });
+  update(()=>{ S.checkins = (S.checkins||[]).filter(c=>c.month!==month); S.checkins.push({month, ...ac, pl, score, notes:$("#ck-notes").value});
+    S.goals.forEach((g,i)=>{ const el=document.getElementById(`ck-g-${i}`); if (!el || el.value==="") return; const v=+el.value;
+      g.current_value = v; g.history = (g.history||[]).filter(h=>h.month!==month); g.history.push({month, value:v}); g.history.sort((a,b)=>a.month<b.month?-1:1); });
+    const ef = document.getElementById("ck-ef"); if (ef && ef.value!=="") S.profile.emergency_balance_usd = +ef.value; });
   $("#ckResult").textContent = `Saved. Score ${score}/100. Now update your balances on Debts, Goals and Setup so next month starts from reality.`;
 });
 

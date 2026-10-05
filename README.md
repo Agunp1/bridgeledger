@@ -21,6 +21,9 @@ spend guilt-free. A monthly check-in then tracks whether you actually followed i
 | **A rulebook, not just a tracker** | A fixed monthly waterfall decides where every dollar goes (see below). |
 | **What-if** | Slide in extra income and see every date move. |
 | **Monthly check-in** | Planned vs actual → a 0–100 discipline score and a streak. |
+| **Investment advisor** (web) | For each goal: which country, account and instrument (US index fund, US-listed India ETF, Indian index fund, T-bills, NRE FD), the expected growth rate with its source and date, and the steps to follow. Uses your US tax status (F-1 five-year rule, PFIC rules for Indian mutual funds). An "Ask the advisor" box explains the plan in plain words from the same sourced data. |
+| **Goal progress** (web) | Saved vs target, where each goal should be by now, ahead or behind, and a chart of your check-ins against the path. |
+| **Weekly rate refresh** | A scheduled task researches current rates (USD/INR, savings and T-bill yields, index returns, NRE FD rates) every Monday and updates the app with sources. |
 
 ## The monthly waterfall
 
