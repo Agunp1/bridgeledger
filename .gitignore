@@ -1,0 +1,11 @@
+# your real financial data never goes to GitHub
+data/
+*.db
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.streamlit/secrets.toml
+.DS_Store
