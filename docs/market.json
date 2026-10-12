@@ -1,9 +1,9 @@
 {
- "as_of": "2026-10-05",
+ "as_of": "2026-10-12",
  "fx": {
-  "usd_inr": 96.3,
-  "as_of": "2026-10-05",
-  "change_1y_pct": 8.54,
+  "usd_inr": 96.04,
+  "as_of": "2026-10-12",
+  "change_1y_pct": 8.32,
   "avg_depr_10y_pct": 3.6,
   "sources": [
    {
@@ -24,12 +24,12 @@
    "currency": "USD",
    "kind": "safe",
    "metric": "Top APYs",
-   "value": "3.75–4.21%",
-   "plan_rate": 4,
-   "as_of": "2026-10-02",
+   "value": "4.25–4.34%",
+   "plan_rate": 4.1,
+   "as_of": "2026-10-11",
    "source": {
-    "title": "CNBC Select: best high-yield savings",
-    "url": "https://www.cnbc.com/select/best-high-yield-savings-accounts/"
+    "title": "The Motley Fool: top savings account rates today (Oct 12, 2026)",
+    "url": "https://www.fool.com/money/banks/articles/top-savings-account-rates-today-oct-12-2026/"
    },
    "tax": "Interest is taxed as ordinary income in the US.",
    "pfic": false
@@ -41,12 +41,12 @@
    "currency": "USD",
    "kind": "safe",
    "metric": "1-year yield",
-   "value": "4.46%",
+   "value": "4.44%",
    "plan_rate": 4.2,
-   "as_of": "2026-10-02",
+   "as_of": "2026-10-08",
    "source": {
-    "title": "YCharts: 1 Year Treasury Rate",
-    "url": "https://ycharts.com/indicators/1_year_treasury_rate"
+    "title": "Federal Reserve H.15: Selected Interest Rates (1-year constant maturity)",
+    "url": "https://www.federalreserve.gov/releases/h15/"
    },
    "tax": "Federal tax only; exempt from state and local income tax.",
    "pfic": false
@@ -58,9 +58,9 @@
    "currency": "USD",
    "kind": "equity",
    "metric": "Annualized total return",
-   "value": "10y 15.3% · 20y 11.2%",
+   "value": "10y 15.5% · 20y 11.2%",
    "plan_rate": 8,
-   "as_of": "2026-10-02",
+   "as_of": "2026-10-09",
    "source": {
     "title": "Chartrow: S&P 500 trailing returns",
     "url": "https://chartrow.com/sp500/trailing-returns"
@@ -76,12 +76,12 @@
    "currency": "USD",
    "kind": "equity",
    "metric": "Return in USD",
-   "value": "1y −11.2% · since 2012 5.5%/yr · fee 0.61%",
+   "value": "1y −12.8% · since 2012 4.8%/yr · fee 0.61%",
    "plan_rate": 7,
-   "as_of": "2026-10-02",
+   "as_of": "2026-10-09",
    "source": {
-    "title": "StockAnalysis: INDA",
-    "url": "https://stockanalysis.com/etf/inda/"
+    "title": "Chartrow: INDA trailing returns",
+    "url": "https://chartrow.com/quote/inda/trailing-returns"
    },
    "tax": "A US fund, so no PFIC problem. US capital-gains rules apply.",
    "pfic": false,
@@ -112,8 +112,8 @@
    "kind": "safe",
    "metric": "Category 1-year return",
    "value": "≈6.3%",
-   "plan_rate": 6.3,
-   "as_of": "2026-10-01",
+   "plan_rate": 6.2,
+   "as_of": "2026-10-11",
    "source": {
     "title": "INDmoney: liquid funds",
     "url": "https://www.indmoney.com/mutual-funds/debt/liquid"
@@ -129,7 +129,7 @@
    "kind": "safe",
    "metric": "Rate by tenor",
    "value": "1–2y 6.25% · 2–3y 6.40% · 5–10y 6.05%",
-   "plan_rate": 6.3,
+   "plan_rate": 6.2,
    "as_of": "2026-08-15",
    "source": {
     "title": "SBI: NRE fixed deposit rates",
@@ -143,12 +143,12 @@
   {
    "id": "rbi_repo",
    "name": "RBI repo rate",
-   "value": 5.25,
-   "as_of": "2026-10-05",
-   "note": "Unchanged for four reviews. Decision due Oct 7, 2026; economists expect a 0.25-point hike.",
+   "value": 5.5,
+   "as_of": "2026-10-07",
+   "note": "Raised 0.25 points to 5.50% on Oct 7, 2026, with the stance shifted to calibrated tightening; next policy decision due Dec 4, 2026.",
    "source": {
-    "title": "Upstox: RBI MPC October 2026",
-    "url": "https://upstox.com/news/personal-finance/financial-regulations/rbi-mpc-october-2026-will-repo-rate-rise-25-bps-what-borrowers-and-fd-savers-should-know/article-201240/"
+    "title": "CorpLawUpdates: RBI repo rate hike to 5.50% (Oct 2026)",
+    "url": "https://www.corplawupdates.in/updates/rbi-repo-rate-hike-5-50-percent-october-2026"
    }
   },
   {
@@ -156,7 +156,7 @@
    "name": "US Prime rate",
    "value": 7,
    "as_of": "2026-09-16",
-   "note": "Raised 0.25 points on Sep 16, 2026. Fed funds target 3.75–4.00%; next Fed meeting Oct 28, 2026.",
+   "note": "Unchanged since the 0.25-point rise on Sep 16, 2026. Fed funds target 3.75–4.00%; next Fed decision Oct 28, 2026.",
    "source": {
     "title": "FedPrimeRate.com: US Prime rate",
     "url": "https://www.fedprimerate.com/"
