@@ -1,9 +1,9 @@
 {
- "as_of": "2026-10-12",
+ "as_of": "2026-10-19",
  "fx": {
-  "usd_inr": 96.04,
-  "as_of": "2026-10-12",
-  "change_1y_pct": 8.32,
+  "usd_inr": 94.97,
+  "as_of": "2026-10-16",
+  "change_1y_pct": 7.92,
   "avg_depr_10y_pct": 3.6,
   "sources": [
    {
@@ -24,12 +24,12 @@
    "currency": "USD",
    "kind": "safe",
    "metric": "Top APYs",
-   "value": "4.25–4.34%",
+   "value": "4.25–4.35%",
    "plan_rate": 4.1,
-   "as_of": "2026-10-11",
+   "as_of": "2026-10-14",
    "source": {
-    "title": "The Motley Fool: top savings account rates today (Oct 12, 2026)",
-    "url": "https://www.fool.com/money/banks/articles/top-savings-account-rates-today-oct-12-2026/"
+    "title": "The College Investor: best high-yield savings rates for Oct 14, 2026",
+    "url": "https://thecollegeinvestor.com/90524/best-high-yield-savings-rates-for-october-14-2026/"
    },
    "tax": "Interest is taxed as ordinary income in the US.",
    "pfic": false
@@ -41,12 +41,12 @@
    "currency": "USD",
    "kind": "safe",
    "metric": "1-year yield",
-   "value": "4.44%",
-   "plan_rate": 4.2,
-   "as_of": "2026-10-08",
+   "value": "4.49%",
+   "plan_rate": 4.3,
+   "as_of": "2026-10-15",
    "source": {
-    "title": "Federal Reserve H.15: Selected Interest Rates (1-year constant maturity)",
-    "url": "https://www.federalreserve.gov/releases/h15/"
+    "title": "FRED (St. Louis Fed): 1-year Treasury constant maturity (DGS1, from Fed H.15)",
+    "url": "https://alfred.stlouisfed.org/series?seid=DGS1"
    },
    "tax": "Federal tax only; exempt from state and local income tax.",
    "pfic": false
@@ -58,9 +58,9 @@
    "currency": "USD",
    "kind": "equity",
    "metric": "Annualized total return",
-   "value": "10y 15.5% · 20y 11.2%",
+   "value": "10y 15.4% · 20y 11.0%",
    "plan_rate": 8,
-   "as_of": "2026-10-09",
+   "as_of": "2026-10-16",
    "source": {
     "title": "Chartrow: S&P 500 trailing returns",
     "url": "https://chartrow.com/sp500/trailing-returns"
@@ -76,11 +76,11 @@
    "currency": "USD",
    "kind": "equity",
    "metric": "Return in USD",
-   "value": "1y −12.8% · since 2012 4.8%/yr · fee 0.61%",
+   "value": "1y −11.9% · since 2012 5.0%/yr · fee 0.61%",
    "plan_rate": 7,
-   "as_of": "2026-10-09",
+   "as_of": "2026-10-16",
    "source": {
-    "title": "Chartrow: INDA trailing returns",
+    "title": "Chartrow: INDA trailing returns; ETF Database (expense ratio)",
     "url": "https://chartrow.com/quote/inda/trailing-returns"
    },
    "tax": "A US fund, so no PFIC problem. US capital-gains rules apply.",
@@ -94,12 +94,12 @@
    "currency": "INR",
    "kind": "equity",
    "metric": "Nifty 500 TRI, annualized",
-   "value": "5y 11.89%",
+   "value": "5y 9.04%",
    "plan_rate": 11,
    "as_of": "2026-09-30",
    "source": {
-    "title": "NSE: Nifty 500 factsheet (Sep 2026)",
-    "url": "https://nsearchives.nseindia.com/content/indices/ind_nifty_500.pdf"
+    "title": "NSE Indices: Nifty 500 factsheet (Sep 2026)",
+    "url": "https://www.niftyindices.com/Factsheet/ind_nifty_500.pdf"
    },
    "tax": "India: 12.5% on long-term gains above ₹1.25 lakh a year, 20% short-term. US tax residents: PFIC rules apply.",
    "pfic": true
@@ -113,7 +113,7 @@
    "metric": "Category 1-year return",
    "value": "≈6.3%",
    "plan_rate": 6.2,
-   "as_of": "2026-10-11",
+   "as_of": "2026-10-17",
    "source": {
     "title": "INDmoney: liquid funds",
     "url": "https://www.indmoney.com/mutual-funds/debt/liquid"
@@ -147,8 +147,8 @@
    "as_of": "2026-10-07",
    "note": "Raised 0.25 points to 5.50% on Oct 7, 2026, with the stance shifted to calibrated tightening; next policy decision due Dec 4, 2026.",
    "source": {
-    "title": "CorpLawUpdates: RBI repo rate hike to 5.50% (Oct 2026)",
-    "url": "https://www.corplawupdates.in/updates/rbi-repo-rate-hike-5-50-percent-october-2026"
+    "title": "5paisa: RBI MPC meeting schedule 2026-27 (repo hiked to 5.50%)",
+    "url": "https://www.5paisa.com/index.php/blog/rbi-mpc-meeting-schedule"
    }
   },
   {
